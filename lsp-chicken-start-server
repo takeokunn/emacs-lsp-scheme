@@ -1,0 +1,16 @@
+#! /usr/local/bin/csi -ss
+
+(import (lsp-server)
+        (scheme process-context))
+
+(define (main args)
+  (define lsp-port-num (string->number (car args)))
+  (define command-port-num (string->number (cadr args)))
+  (define repl-port-num (string->number (caddr args)))
+
+  (parameterize ((lsp-server-log-level 'debug))
+    (start-lsp-server-full lsp-port-num command-port-num repl-port-num)))
+
+(cond-expand
+ (compile (main (cdr (command-line))))
+ (else))
