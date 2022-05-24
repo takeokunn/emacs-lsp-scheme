@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Ricardo Gabriel Herdt
 
-;; Author: Ricardo G. Herdt
+;; Author: Ricardo Gabriel Herdt
 ;; Keywords: languages
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -16,11 +16,12 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 
 ;;; Commentary:
 
-;; Client for the Scheme language server.
+;; Client for the Scheme LSP server.
 
 ;;; Code:
 
