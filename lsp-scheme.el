@@ -39,25 +39,48 @@
 (defcustom lsp-scheme-implementation "chicken"
   "Scheme implementation used."
   :type 'string
-  :package-version '(lsp-mode . "0.0.1"))
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
 
 (defcustom lsp-scheme-log-level "debug"
   "Log level verbosity. One of \"warning\", \"info\", \"debug\"."
   :type 'string
-  :package-version '(lsp-mode . "0.0.1"))
-
-(defcustom lsp-scheme-listening-port "37146"
-  "Port of Scheme process that shall start the LSP server")
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
 
 (defcustom lsp-scheme-chicken-start-command
   "csi -R r7rs"
   "Command to start chicken's interpreter."
+  :group 'lsp-scheme
   :type 'string)
 
 (defcustom lsp-scheme-guile-start-command
   "guile --r7rs"
   "Command to start guile's interpreter."
+  :group 'lsp-scheme
   :type 'string)
+
+(defcustom lsp-scheme-chicken-connect-command
+  (locate-file "lsp-chicken-connect-to-server" load-path)
+  "Command to spawn a new LSP connection."
+  :type 'string
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
+(defcustom lsp-scheme-guile-connect-command
+  (locate-file "lsp-guile-connect-to-server" load-path)
+  "Command to spawn a new LSP connection."
+  :type 'string
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
+(defcustom lsp-scheme-command-port
+  8888
+  "Port of the command server."
+  :type 'integer
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
 
 (defun lsp-scheme-select-start-command ()
   "Select a command to launch an interpreter for the selected implementation"
@@ -68,28 +91,14 @@
         (t (error "Implementation not supported: %s"
                   lsp-scheme-implementation))))
 
-(defcustom lsp-scheme-connect-command
-  (locate-file "lsp-chicken-connect-to-server" load-path)
-  "Command to spawn a new LSP connection."
-  :type 'string
-  :package-version '(lsp-mode . "0.0.1"))
-
-(defcustom lsp-scheme-guile-connect
-  (locate-file "lsp-guile-connect-to-server" load-path)
-  "Command to spawn a new LSP connection."
-  :type 'string
-  :package-version '(lsp-mode . "0.0.1"))
-
-(defvar lsp-scheme-command-port 8888)
-
 (defun lsp-scheme-select-connect-command (port)
   "Dispatches language server command based on selected implementation."
   (cond ((string-equal lsp-scheme-implementation "chicken")
-         (list lsp-scheme-chicken-connect
+         (list lsp-scheme-chicken-connect-command
                (format "%d" lsp-scheme-command-port)
                (format "%d" port)))
         ((string-equal lsp-scheme-implementation "guile")
-         (list lsp-scheme-guile-connect
+         (list lsp-scheme-guile-connect-command
                (format "%d" lsp-scheme-command-port)
                (format "%d" port)))
         (t (error "Implementation not supported: %s"
@@ -99,7 +108,7 @@
   (interactive)
   (when (not (comint-check-proc "*lsp-scheme*"))
     (save-excursion
-      (call-interactively 'lsp-scheme-run))))
+      (lsp-scheme-run lsp-scheme-command-port))))
 
 (defun lsp-scheme-run (port-num)
   (interactive "nPort number: ")
@@ -119,7 +128,6 @@
     (setq scheme-program-name cmd)
     (setq scheme-buffer "*lsp-scheme*")
     (pop-to-buffer-same-window "*lsp-scheme*")))
-
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
