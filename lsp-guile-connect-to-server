@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+exec guile --r7rs -e main -s "$0" "$@"
+!#
+
+(import (lsp-server guile)
+        (scheme base)
+        (scheme process-context)
+        (scheme write)
+        (srfi srfi-28))
+
+(define (main args)
+  (define command-port-num (string->number (cadr args)))
+  (define lsp-port-num (string->number (caddr args)))
+
+  (let-values (((inp outp) ($tcp-connect "127.0.0.1"
+                                         command-port-num)))
+    (format "requesting new LSP connection at port ~a"
+            lsp-port-num)
+    (display (format "sending command: spawn-lsp-server ~a" lsp-port-num))
+    (display (format "spawn-lsp-server ~a~%" lsp-port-num)
+             outp)
+    (flush-output-port outp)
+    (format "LSP connection successfull. Idleing.")
+    (read-char)))
+
+

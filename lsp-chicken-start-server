@@ -1,16 +1,22 @@
 #! /usr/local/bin/csi -ss
 
-(import (lsp-server)
+(import (lsp-server private)
         (scheme process-context))
 
 (define (main args)
-  (define lsp-port-num (string->number (car args)))
-  (define command-port-num (string->number (cadr args)))
-  (define repl-port-num (string->number (caddr args)))
+  (define command-port-num (string->number (car args)))
+  (define lsp-port-num (string->number (cadr args)))
 
-  (parameterize ((lsp-server-log-level 'debug))
-    (start-lsp-server-full lsp-port-num command-port-num repl-port-num)))
+  (let-values (((inp outp) ($tcp-connect "127.0.0.1"
+                                         command-port-num)))
+    (write-log 'info
+               (format "requesting new LSP connection at port ~a"
+                       lsp-port-num))
+    (display (format "spawn-lsp-server ~a" lsp-port-num)
+             outp)
+    (flush-output-port outp)
+    (write-log 'info
+               (format "LSP connection successfull. Idleing."))
+    (read-char)))
 
-(cond-expand
- (compile (main (cdr (command-line))))
- (else))
+

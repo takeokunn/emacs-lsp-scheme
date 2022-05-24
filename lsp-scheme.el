@@ -48,99 +48,87 @@
 (defcustom lsp-scheme-listening-port "37146"
   "Port of Scheme process that shall start the LSP server")
 
-(defcustom lsp-scheme-chicken-langserver-command
-  (locate-file "lsp-chicken-start-server" load-path)
-  "Command to start the server."
-  :type 'string
-  :package-version '(lsp-mode . "0.0.1"))
+(defcustom lsp-scheme-chicken-start-command
+  "csi -R r7rs"
+  "Command to start chicken's interpreter."
+  :type 'string)
 
-(defcustom lsp-scheme-guile-langserver-command
-  (locate-file "lsp-guile-start-server" load-path)
-  "Command to start the server."
-  :type 'string
-  :package-version '(lsp-mode . "0.0.1"))
+(defcustom lsp-scheme-guile-start-command
+  "guile --r7rs"
+  "Command to start guile's interpreter."
+  :type 'string)
 
-(defvar lsp-command-port 8888)
-(defvar lsp-repl-server-port 37146)
-
-(defun select-lsp-scheme-langserver-command (port)
-  "Dispatches language server command based on selected implementation."
+(defun lsp-scheme-select-start-command ()
+  "Select a command to launch an interpreter for the selected implementation"
   (cond ((string-equal lsp-scheme-implementation "chicken")
-         (list lsp-scheme-chicken-langserver-command
-               (format "%d" port)
-               (format "%d" lsp-command-port)
-               (format "%d" lsp-repl-server-port))
-         ;;(list "nc" "localhost" "10001")
-         )
+         lsp-scheme-chicken-start-command)
         ((string-equal lsp-scheme-implementation "guile")
-         (list lsp-scheme-guile-langserver-command
-               (format "%d" port)
-               (format "%d" lsp-command-port)
-               (format "%d" lsp-repl-server-port)))
+         lsp-scheme-guile-start-command)
         (t (error "Implementation not supported: %s"
                   lsp-scheme-implementation))))
 
-;; (defun lsp-connect-repl ()
-;;   (run-scheme (format "nc localhost %d" lsp-repl-server-port)))
+(defcustom lsp-scheme-connect-command
+  (locate-file "lsp-chicken-connect-to-server" load-path)
+  "Command to spawn a new LSP connection."
+  :type 'string
+  :package-version '(lsp-mode . "0.0.1"))
 
-(defun lsp-run-scheme (cmd)
-  "Run an inferior Scheme process, input and output via buffer `*scheme*'.
-If there is a process already running in `*scheme*', switch to that buffer.
-With argument, allows you to edit the command line (default is value
-of `scheme-program-name').
-If the file `~/.emacs_SCHEMENAME' or `~/.emacs.d/init_SCHEMENAME.scm' exists,
-it is given as initial input.
-Note that this may lose due to a timing error if the Scheme processor
-discards input when it starts up.
-Runs the hook `inferior-scheme-mode-hook' (after the `comint-mode-hook'
-is run).
-\(Type \\[describe-mode] in the process buffer for a list of commands.)"
+(defcustom lsp-scheme-guile-connect
+  (locate-file "lsp-guile-connect-to-server" load-path)
+  "Command to spawn a new LSP connection."
+  :type 'string
+  :package-version '(lsp-mode . "0.0.1"))
 
-  (interactive (list (if current-prefix-arg
-			 (read-string "Run Scheme: " scheme-program-name)
-			 scheme-program-name)))
-  (if (not (comint-check-proc "*lsp-scheme*"))
-      (let ((cmdlist (split-string-and-unquote cmd)))
-	(set-buffer (make-comint "lsp-scheme"
-                                 `("127.0.0.1" . ,lsp-repl-server-port)))
-	(inferior-scheme-mode)))
-  (setq scheme-program-name cmd)
-  (setq scheme-buffer "*lsp-scheme*")
-  (pop-to-buffer-same-window "*lsp-scheme*"))
+(defvar lsp-scheme-command-port 8888)
 
-;; (defun lsp-run-scheme-guile (port)
-;;   (interactive)
-;;   (run-scheme (format "lsp-guile-start-server %d" port)))
+(defun lsp-scheme-select-connect-command (port)
+  "Dispatches language server command based on selected implementation."
+  (cond ((string-equal lsp-scheme-implementation "chicken")
+         (list lsp-scheme-chicken-connect
+               (format "%d" lsp-scheme-command-port)
+               (format "%d" port)))
+        ((string-equal lsp-scheme-implementation "guile")
+         (list lsp-scheme-guile-connect
+               (format "%d" lsp-scheme-command-port)
+               (format "%d" port)))
+        (t (error "Implementation not supported: %s"
+                  lsp-scheme-implementation))))
 
-;; (defun lsp-run-scheme-guile (port)
-;;   (interactive)
+(defun lsp-scheme-ensure-running ()
+  (when (not (comint-check-proc "*lsp-scheme*"))
+    (call-interactively 'lsp-run-scheme)))
 
-;;   (run-scheme (format "lsp-guile-start-server %d" port))
-  
-;;   (run-with-idle-timer 2 nil
-;;      (lambda ()
-;;       (let ((count 0))
-;;         (while (and (not (comint-check-proc "*scheme*"))
-;;                     (< count 100))
-;;           (progn
-;;             (setq count (1+ count))
-;;             ;;(setq lsp-repl-side-port (1+ lsp-repl-side-port))
-;;             (run-scheme (format "lsp-guile-start-server %d" port))))))))
+(defun lsp-scheme-run (port-num)
+  (interactive "nPort number: ")
+  (message (format "%d" port-num))
+  (let ((cmd (lsp-scheme-select-start-command)))
+    (if (not (comint-check-proc "*lsp-scheme*"))
+        (let ((cmdlist (split-string-and-unquote cmd)))
+          (set-buffer (apply 'make-comint "lsp-scheme"
+                             (car cmdlist)
+                             nil
+                             (cdr cmdlist))))
+      (inferior-scheme-mode))
+    (comint-send-string
+     "*lsp-scheme*"
+     (format "(import (lsp-server)) (lsp-command-server-start %d)\n#t\n"
+             port-num))
+    (setq scheme-program-name cmd)
+    (setq scheme-buffer "*lsp-scheme*")
+    (pop-to-buffer-same-window "*lsp-scheme*")))
 
-(lsp-register-client
- (make-lsp-client :new-connection (lsp-tcp-connection
-                                   #'select-lsp-scheme-langserver-command)
-                  ;;:activation-fn (lsp-activate-on "scheme")
-                  ;;:initialized-fn #'lsp-run-scheme-guile
-                  :major-modes '(scheme-mode)
-                  :priority 1
-                  :server-id 'scheme-lsp-server))
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
 
-;;(lsp-run-scheme-guile)
-;;(lsp-consistency-check lsp-scheme)
+
+(lsp-register-client
+ (make-lsp-client :new-connection (lsp-tcp-connection
+                                   #'lsp-scheme-select-connect-command)
+                  :major-modes '(scheme-mode)
+                  :priority 1
+                  :server-id 'scheme-lsp-server))
+
 
 (provide 'lsp-scheme)
 ;;; lsp-scheme.el ends here
