@@ -95,8 +95,10 @@
                   lsp-scheme-implementation))))
 
 (defun lsp-scheme-ensure-running ()
+  (interactive)
   (when (not (comint-check-proc "*lsp-scheme*"))
-    (call-interactively 'lsp-run-scheme)))
+    (save-excursion
+      (call-interactively 'lsp-scheme-run))))
 
 (defun lsp-scheme-run (port-num)
   (interactive "nPort number: ")
