@@ -124,30 +124,28 @@
 
 (defun lsp-scheme--install-tarball (root-url tarball-name target-name)
   "Ensure tarball (is installed at provided target."
-  (make-thread
-   (lambda ()
-     (condition-case err
-         (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
-                (download-path (concat tmp-dir "/"  tarball-name))
-                (decompressed-path (concat tmp-dir "/" (lsp-scheme--get-root-name-from-tarball tarball-name)))
-                (target-dir (concat user-emacs-directory target-name))
-                (url (concat root-url "/" tarball-name)))
-           (when (f-exists? download-path)
-             (f-delete download-path))
-           (when (f-exists? target-dir)
-             (f-delete target-dir t))
-           (lsp--info "Starting to download %s to %s..." url download-path)
-           (url-copy-file url download-path)
-           (lsp--info "Finished downloading %s..." download-path)
-           (lsp--info "Uncompressing file %s into %s..." download-path tmp-dir)
-           (lsp-scheme--untar download-path tmp-dir)
-           (lsp--info "Switching to installation directory %s..." decompressed-path)
-           (lsp--info "Building software...")
-           (shell-command (format "cd %s && ./configure --prefix=%s && make && make install && cd -"
-                                  decompressed-path
-                                  (expand-file-name target-dir)))
-           (lsp--info "Installation finished."))
-       (error (funcall error-callback err))))))
+  (condition-case err
+      (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
+             (download-path (concat tmp-dir "/"  tarball-name))
+             (decompressed-path (concat tmp-dir "/" (lsp-scheme--get-root-name-from-tarball tarball-name)))
+             (target-dir (concat user-emacs-directory target-name))
+             (url (concat root-url "/" tarball-name)))
+        (when (f-exists? download-path)
+          (f-delete download-path))
+        (when (f-exists? target-dir)
+          (f-delete target-dir t))
+        (lsp--info "Starting to download %s to %s..." url download-path)
+        (url-copy-file url download-path)
+        (lsp--info "Finished downloading %s..." download-path)
+        (lsp--info "Uncompressing file %s into %s..." download-path tmp-dir)
+        (lsp-scheme--untar download-path tmp-dir)
+        (lsp--info "Switching to installation directory %s..." decompressed-path)
+        (lsp--info "Building software...")
+        (shell-command (format "cd %s && ./configure --prefix=%s && make && make install && cd -"
+                               decompressed-path
+                               (expand-file-name target-dir)))
+        (lsp--info "Installation finished."))
+    (error (funcall error-callback err))))
 
 (defun lsp-scheme-select-start-command ()
   "Select a command to launch an interpreter for the selected implementation"

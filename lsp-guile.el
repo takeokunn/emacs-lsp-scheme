@@ -32,18 +32,18 @@
         (format "%d" port)))
 
 (defvar lsp-scheme--guile-target-dir
-  "guile-lsp-server")
+  "guile-lsp-server/")
 
 (defun lsp-scheme--guile-ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed."
   (condition-case err
-      (lsp-scheme--install-tarball lsp-scheme-json-rpc-root-url
-                                   "guile-json-rpc-0.2.0.tar.gz"
-                                   lsp-scheme--guile-target-dir)
-    (lsp-scheme--install-tarball lsp-scheme-lsp-server-root-url
-                                 "guile-lsp-server-0.2.0.tar.gz"
-                                 lsp-scheme--guile-target-dir)
-    (funcall callback)
+      (progn (lsp-scheme--install-tarball lsp-scheme-json-rpc-root-url
+                                    "guile-json-rpc-0.2.0.tar.gz"
+                                    lsp-scheme--guile-target-dir)
+             (lsp-scheme--install-tarball lsp-scheme-lsp-server-root-url
+                                          "guile-lsp-server-0.2.0.tar.gz"
+                                          lsp-scheme--guile-target-dir)
+             (funcall callback))
     (error (funcall error-callback err))))
 
 
@@ -60,6 +60,9 @@
          (expand-file-name (concat user-emacs-directory (format "%s/share/guile/3.0/:"
                                                                 lsp-scheme--guile-target-dir)))
          (getenv "GUILE_LOAD_PATH")))
+
+(eval-after-load 'lsp-guile
+  '(lsp-scheme-ensure-running))
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-tcp-connection
