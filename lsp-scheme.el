@@ -60,27 +60,94 @@
   :group 'lsp-scheme
   :type 'string)
 
-(defcustom lsp-scheme-chicken-connect-command
-  (locate-file "lsp-chicken-connect-to-server" load-path)
-  "Command to spawn a new LSP connection."
-  :type 'string
-  :group 'lsp-scheme
-  :package-version '(lsp-scheme . "0.0.1"))
-
-(defcustom lsp-scheme-guile-connect-command
-  (locate-file "lsp-guile-connect-to-server" load-path)
-  "Command to spawn a new LSP connection."
-  :type 'string
-  :group 'lsp-scheme
-  :package-version '(lsp-scheme . "0.0.1"))
-
 (defcustom lsp-scheme-command-port
-  8888
+  8889
   "Port of the command server."
   :type 'integer
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
 
+
+(defcustom lsp-scheme-json-rpc-root-url
+  "https://gitlab.com/rgherdt/scheme-json-rpc/-/raw/master/releases/"
+  "Path to JSON-RPC library."
+  :type 'string
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
+(defcustom lsp-scheme-lsp-server-root-url
+  "https://gitlab.com/rgherdt/scheme-lsp-server/-/raw/master/releases/"
+  "Path to the LSP server implementation."
+  :type 'string
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
+
+(defvar lsp-scheme--json-rpc-version
+  "0.2.0"
+  "Version of JSON-RPC implementation used.")
+
+
+(defcustom lsp-scheme--lsp-server-download-url
+  "https://gitlab.com/rgherdt/scheme-lsp-server"
+  "Path to Scheme's LSP server."
+  :type 'string
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
+
+(defconst lsp-scheme-ext-untar-script "tar -xzvf %s -C %s"
+  "Script to decompress tar.gz tarballs. The script should take two arguments: the path to
+ the tarball and the target directory to decompress the tarball into.")
+
+(defcustom lsp-scheme-untar-script
+  (cond ((executable-find "tar") lsp-scheme-ext-untar-script)
+        (t nil))
+  "Script to decompress tar.gz tarballs. Should be a format string with one argument
+ for the file to be decompressed in place."
+  :group 'lsp-scheme
+  :type 'string
+  :package-version '(lsp-scheme . "0.0.1"))
+
+(defun lsp-scheme--untar (tar-file target-dir)
+  "Decompress tar.gz tarball in place."
+  (unless lsp-scheme-untar-script
+    (error "Unable to find `tar' on the path, please either customize `lsp-scheme--untar-script' or manually decompress %s" tar-file))
+  (shell-command (format lsp-scheme-untar-script tar-file target-dir)))
+
+
+(defun lsp-scheme--get-root-name-from-tarball (file-name)
+  (let ((root (file-name-sans-extension file-name)))
+    (if (string-equal (file-name-extension root) "tar")
+        (file-name-sans-extension root)
+      root)))
+
+(defun lsp-scheme--install-tarball (root-url tarball-name target-name)
+  "Ensure tarball (is installed at provided target."
+  (make-thread
+   (lambda ()
+     (condition-case err
+         (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
+                (download-path (concat tmp-dir "/"  tarball-name))
+                (decompressed-path (concat tmp-dir "/" (lsp-scheme--get-root-name-from-tarball tarball-name)))
+                (target-dir (concat user-emacs-directory target-name))
+                (url (concat root-url "/" tarball-name)))
+           (when (f-exists? download-path)
+             (f-delete download-path))
+           (when (f-exists? target-dir)
+             (f-delete target-dir t))
+           (lsp--info "Starting to download %s to %s..." url download-path)
+           (url-copy-file url download-path)
+           (lsp--info "Finished downloading %s..." download-path)
+           (lsp--info "Uncompressing file %s into %s..." download-path tmp-dir)
+           (lsp-scheme--untar download-path tmp-dir)
+           (lsp--info "Switching to installation directory %s..." decompressed-path)
+           (lsp--info "Building software...")
+           (shell-command (format "cd %s && ./configure --prefix=%s && make && make install && cd -"
+                                  decompressed-path
+                                  (expand-file-name target-dir)))
+           (lsp--info "Installation finished."))
+       (error (funcall error-callback err))))))
 
 (defun lsp-scheme-select-start-command ()
   "Select a command to launch an interpreter for the selected implementation"
@@ -91,24 +158,10 @@
         (t (error "Implementation not supported: %s"
                   lsp-scheme-implementation))))
 
-(defun lsp-scheme-select-connect-command (port)
-  "Dispatches language server command based on selected implementation."
-  (cond ((string-equal lsp-scheme-implementation "chicken")
-         (list lsp-scheme-chicken-connect-command
-               (format "%d" lsp-scheme-command-port)
-               (format "%d" port)))
-        ((string-equal lsp-scheme-implementation "guile")
-         (list lsp-scheme-guile-connect-command
-               (format "%d" lsp-scheme-command-port)
-               (format "%d" port)))
-        (t (error "Implementation not supported: %s"
-                  lsp-scheme-implementation))))
-
 (defun lsp-scheme-ensure-running ()
   (interactive)
-  (when (not (comint-check-proc "*lsp-scheme*"))
-    (save-excursion
-      (lsp-scheme-run lsp-scheme-command-port))))
+  (save-excursion
+    (lsp-scheme-run lsp-scheme-command-port)))
 
 (defun lsp-scheme-run (port-num)
   (interactive "nPort number: ")
@@ -131,14 +184,6 @@
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
-
-
-(lsp-register-client
- (make-lsp-client :new-connection (lsp-tcp-connection
-                                   #'lsp-scheme-select-connect-command)
-                  :major-modes '(scheme-mode)
-                  :priority 1
-                  :server-id 'scheme-lsp-server))
 
 
 (provide 'lsp-scheme)
