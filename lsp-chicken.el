@@ -29,7 +29,8 @@
   :package-version '(lsp-scheme . "0.0.1"))
 
 (defun lsp-scheme--chicken-start (port)
-  (list (locate-file "bin/lsp-chicken-connect" load-path)
+  (list (or (locate-file "lsp-chicken-connect" load-path)
+            (locate-file "bin/lsp-chicken-connect" load-path))
         (format "%d" lsp-scheme-command-port)
         (format "%d" port)))
 
@@ -106,12 +107,13 @@
              (funcall callback))
     (error (funcall error-callback err))))
 
-(add-to-list 'load-path
-             (concat user-emacs-directory
-                     lsp-scheme--chicken-target-dir))
-
 
 (defun lsp-chicken ()
+  "Setup and start Guile's LSP server."
+  (add-to-list 'load-path
+               (concat user-emacs-directory
+                       lsp-scheme--chicken-target-dir))
+
   (setenv "CHICKEN_REPOSITORY_PATH"
           (concat
            (expand-file-name
@@ -121,7 +123,7 @@
             "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'")))
   (let ((client (gethash 'lsp-chicken-server lsp-clients)))
     (when (and client (lsp--server-binary-present? client))
-      (lsp-scheme-ensure-running "chicken"))))
+      (lsp-scheme-run "chicken"))))
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-tcp-connection

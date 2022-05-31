@@ -47,7 +47,7 @@
                                           lsp-scheme--guile-target-dir
                                           error-callback
                                           "/guile/")
-             (lsp-scheme-ensure-running)
+             (lsp-scheme-run "guile")
              (run-with-timer
               0.0
               nil
@@ -66,11 +66,11 @@
     (error (funcall error-callback err))))
 
 
-(add-to-list 'load-path
+(defun lsp-guile ()
+  "Setup and start Guile's LSP server."
+  (add-to-list 'load-path
              (expand-file-name
               (concat user-emacs-directory lsp-scheme--guile-target-dir)))
-
-(defun lsp-guile ()
   (setenv "GUILE_LOAD_COMPILED_PATH"
           (concat
            (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
@@ -85,26 +85,7 @@
            (getenv "GUILE_LOAD_PATH")))
   (let ((client (gethash 'lsp-guile-server lsp-clients)))
     (when (and client (lsp--server-binary-present? client))
-      (lsp-scheme-ensure-running "guile"))))
-
-;; (defun guile-init ()
-;;   (message "HOOK")
-;;   (let ((client (gethash 'lsp-guile-server lsp-clients)))
-;;     (when (and client (lsp--server-binary-present? client))
-;;       (message "INITIALIZE GUILE")
-;;       (lsp-guile-initialize)
-;;       (lsp-scheme-ensure-running "guile"))))
- 
-;; (add-hook 'lsp-hook
-;;           (lambda ()
-;;             (message "INIT GUILE3a")
-;;             (when (string= lsp-scheme-implementation "guile")
-;;               (message "INIT GUILE3b")
-;;               (lsp-guile-initialize)
-
-;;               (let ((client (gethash 'lsp-guile-server lsp-clients)))
-;;                 (when (and client (lsp--server-binary-present? client))
-;;                   (lsp-scheme-ensure-running))))))
+      (lsp-scheme-run "guile"))))
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-tcp-connection

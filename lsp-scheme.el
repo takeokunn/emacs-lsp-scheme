@@ -42,7 +42,7 @@
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
 
-(defcustom lsp-scheme-log-level "debug"
+(defcustom lsp-scheme-log-level "warning"
   "Log level verbosity. One of \"warning\", \"info\", \"debug\"."
   :type 'string
   :group 'lsp-scheme
@@ -61,7 +61,7 @@
   :type 'string)
 
 (defcustom lsp-scheme-command-port
-  8888
+  6251
   "Port of the command server."
   :type 'integer
   :group 'lsp-scheme
@@ -165,29 +165,32 @@
         (t (error "Implementation not supported: %s"
                   lsp-scheme-implementation))))
 
-(defun lsp-scheme-ensure-running (implementation)
-  (interactive)
-  (save-excursion
-    (lsp-scheme-run implementation lsp-scheme-command-port)))
-
-(defun lsp-scheme-run (implementation port-num)
-  (interactive "sScheme implementation: \nnPort number: ")
-  (message (format "%d" port-num))
+(defun lsp-scheme-run (implementation)
+  (interactive "sScheme implementation: \n")
   (let ((cmd (lsp-scheme-select-start-command implementation)))
     (when (not (comint-check-proc "*lsp-scheme*"))
-      (let ((cmdlist (split-string-and-unquote cmd)))
-        (set-buffer (apply 'make-comint "lsp-scheme"
-                           (car cmdlist)
-                           nil
-                           (cdr cmdlist)))
+      (let ((cmdlist (split-string-and-unquote cmd))
+            (port-num (lsp--find-available-port "localhost" lsp-scheme-command-port)))
+        (apply 'make-comint "lsp-scheme"
+               (car cmdlist)
+               nil
+               (cdr cmdlist))
         (comint-send-string
          "*lsp-scheme*"
-         (format "(import (lsp-server)) (lsp-command-server-start %d)\n#t\n"
-                 port-num))))
+         (format "(import (lsp-server)) (parameterize ((lsp-server-log-level '%s)) (lsp-command-server-start %d))\n#t\n"
+                 lsp-scheme-log-level
+                 port-num))
+        (run-with-timer
+         0.0
+         nil
+         (lambda ()
+           (comint-send-string
+            "*lsp-scheme*"
+            "\n")))))
     
     (setq scheme-program-name cmd)
     (setq scheme-buffer "*lsp-scheme*")
-    (pop-to-buffer-same-window "*lsp-scheme*")))
+    (display-buffer "*lsp-scheme*" '(display-buffer-pop-up-window))))
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
