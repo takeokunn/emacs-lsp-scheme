@@ -1,6 +1,6 @@
 ;;; lsp-guile.el --- lsp-mode Guile integration    -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020 Ricardo Gabriel Herdt
+;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
 ;; Author: Ricardo Gabriel Herdt
 ;; Keywords: languages
@@ -27,49 +27,91 @@
   :type 'string)
 
 (defun lsp-scheme--guile-start (port)
-  (list (locate-file "bin/lsp-guile-connect-to-server" load-path)
+  (list (locate-file "bin/lsp-guile-connect" load-path)
         (format "%d" lsp-scheme-command-port)
         (format "%d" port)))
 
 (defvar lsp-scheme--guile-target-dir
-  "guile-lsp-server/")
+  "lsp-guile-server/")
+
+(defvar lsp-scheme--guile-server-version "0.2.0")
 
 (defun lsp-scheme--guile-ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed."
   (condition-case err
-      (progn (lsp-scheme--install-tarball lsp-scheme-json-rpc-root-url
-                                    "guile-json-rpc-0.2.0.tar.gz"
-                                    lsp-scheme--guile-target-dir)
-             (lsp-scheme--install-tarball lsp-scheme-lsp-server-root-url
-                                          "guile-lsp-server-0.2.0.tar.gz"
-                                          lsp-scheme--guile-target-dir)
+      (progn (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
+                                          lsp-scheme--guile-target-dir
+                                          error-callback
+                                          "/guile/")
+             (lsp-scheme--install-tarball lsp-scheme-server-url
+                                          lsp-scheme--guile-target-dir
+                                          error-callback
+                                          "/guile/")
+             (lsp-scheme-ensure-running)
+             (run-with-timer
+              0.0
+              nil
+              (lambda ()
+                (let* ((buffers (buffer-list))
+                       (scheme-buffers
+                        (seq-filter
+                         (lambda (b)
+                           (eq (buffer-local-value 'major-mode b)
+                               'scheme-mode))
+                         buffers)))
+                  (dolist (b scheme-buffers)
+                    (with-current-buffer b
+                      (revert-buffer nil t))))))
              (funcall callback))
     (error (funcall error-callback err))))
 
 
-(add-to-list 'load-path (concat user-emacs-directory lsp-scheme--guile-target-dir))
-(setenv "GUILE_LOAD_COMPILED_PATH"
-        (concat
-         (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
-         (expand-file-name (concat user-emacs-directory (format "%s/lib/guile/3.0/site-ccache/:"
-                                                                lsp-scheme--guile-target-dir)))
-         (getenv "GUILE_LOAD_COMPILED_PATH")))
-(setenv "GUILE_LOAD_PATH"
-        (concat
-         (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
-         (expand-file-name (concat user-emacs-directory (format "%s/share/guile/3.0/:"
-                                                                lsp-scheme--guile-target-dir)))
-         (getenv "GUILE_LOAD_PATH")))
+(add-to-list 'load-path
+             (expand-file-name
+              (concat user-emacs-directory lsp-scheme--guile-target-dir)))
 
-(eval-after-load 'lsp-guile
-  '(lsp-scheme-ensure-running))
+(defun lsp-guile ()
+  (setenv "GUILE_LOAD_COMPILED_PATH"
+          (concat
+           (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
+           (expand-file-name (concat user-emacs-directory (format "%s/lib/guile/3.0/site-ccache/:"
+                                                                  lsp-scheme--guile-target-dir)))
+           (getenv "GUILE_LOAD_COMPILED_PATH")))
+  (setenv "GUILE_LOAD_PATH"
+          (concat
+           (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
+           (expand-file-name (concat user-emacs-directory (format "%s/share/guile/3.0/:"
+                                                                  lsp-scheme--guile-target-dir)))
+           (getenv "GUILE_LOAD_PATH")))
+  (let ((client (gethash 'lsp-guile-server lsp-clients)))
+    (when (and client (lsp--server-binary-present? client))
+      (lsp-scheme-ensure-running "guile"))))
+
+;; (defun guile-init ()
+;;   (message "HOOK")
+;;   (let ((client (gethash 'lsp-guile-server lsp-clients)))
+;;     (when (and client (lsp--server-binary-present? client))
+;;       (message "INITIALIZE GUILE")
+;;       (lsp-guile-initialize)
+;;       (lsp-scheme-ensure-running "guile"))))
+ 
+;; (add-hook 'lsp-hook
+;;           (lambda ()
+;;             (message "INIT GUILE3a")
+;;             (when (string= lsp-scheme-implementation "guile")
+;;               (message "INIT GUILE3b")
+;;               (lsp-guile-initialize)
+
+;;               (let ((client (gethash 'lsp-guile-server lsp-clients)))
+;;                 (when (and client (lsp--server-binary-present? client))
+;;                   (lsp-scheme-ensure-running))))))
 
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-tcp-connection
                                    #'lsp-scheme--guile-start)
                   :major-modes '(scheme-mode)
                   :priority 1
-                  :server-id 'guile-lsp-server
+                  :server-id 'lsp-guile-server
                   :download-server-fn #'lsp-scheme--guile-ensure-server))
 
 (provide 'lsp-guile)

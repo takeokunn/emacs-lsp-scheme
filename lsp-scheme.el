@@ -1,6 +1,6 @@
 ;;; lsp-scheme.el --- lsp-mode scheme integration    -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020 Ricardo Gabriel Herdt
+;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
 ;; Author: Ricardo Gabriel Herdt
 ;; Keywords: languages
@@ -61,35 +61,28 @@
   :type 'string)
 
 (defcustom lsp-scheme-command-port
-  8889
+  8888
   "Port of the command server."
   :type 'integer
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
 
-
-(defcustom lsp-scheme-json-rpc-root-url
-  "https://gitlab.com/rgherdt/scheme-json-rpc/-/raw/master/releases/"
-  "Path to JSON-RPC library."
-  :type 'string
-  :group 'lsp-scheme
-  :package-version '(lsp-scheme . "0.0.1"))
-
-(defcustom lsp-scheme-lsp-server-root-url
-  "https://gitlab.com/rgherdt/scheme-lsp-server/-/raw/master/releases/"
-  "Path to the LSP server implementation."
-  :type 'string
-  :group 'lsp-scheme
-  :package-version '(lsp-scheme . "0.0.1"))
-
-
-(defvar lsp-scheme--json-rpc-version
-  "0.2.0"
+(defconst lsp-scheme--json-rpc-version
+  "master"
   "Version of JSON-RPC implementation used.")
 
+(defconst lsp-scheme--lsp-server-version
+  "master"
+  "Version of JSON-RPC implementation used.")
 
-(defcustom lsp-scheme--lsp-server-download-url
-  "https://gitlab.com/rgherdt/scheme-lsp-server"
+(defvar lsp-scheme--json-rpc-url
+  (format "https://gitlab.com/rgherdt/scheme-json-rpc/-/archive/%s/scheme-json-rpc-%s.tar.gz"
+          lsp-scheme--json-rpc-version lsp-scheme--json-rpc-version)
+  "Path to JSON-RPC library.")
+
+(defcustom lsp-scheme-server-url
+  (format "https://gitlab.com/rgherdt/scheme-lsp-server/-/archive/%s/scheme-lsp-server-%s.tar.gz"
+          lsp-scheme--lsp-server-version lsp-scheme--lsp-server-version)
   "Path to Scheme's LSP server."
   :type 'string
   :group 'lsp-scheme
@@ -113,7 +106,10 @@
   "Decompress tar.gz tarball in place."
   (unless lsp-scheme-untar-script
     (error "Unable to find `tar' on the path, please either customize `lsp-scheme--untar-script' or manually decompress %s" tar-file))
-  (shell-command (format lsp-scheme-untar-script tar-file target-dir)))
+  (call-process-shell-command (format lsp-scheme-untar-script tar-file target-dir)
+                              nil
+                              "*Shell Command Output*"
+                              t))
 
 
 (defun lsp-scheme--get-root-name-from-tarball (file-name)
@@ -122,14 +118,20 @@
         (file-name-sans-extension root)
       root)))
 
-(defun lsp-scheme--install-tarball (root-url tarball-name target-name)
-  "Ensure tarball (is installed at provided target."
+(defun lsp-scheme--install-tarball (url target-name error-callback &optional subdir)
+  "Ensure tarball is installed at provided target."
   (condition-case err
       (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
+             (tarball-name (file-name-nondirectory url))
              (download-path (concat tmp-dir "/"  tarball-name))
-             (decompressed-path (concat tmp-dir "/" (lsp-scheme--get-root-name-from-tarball tarball-name)))
-             (target-dir (concat user-emacs-directory target-name))
-             (url (concat root-url "/" tarball-name)))
+             (decompressed-path
+              (concat tmp-dir "/"
+                      (lsp-scheme--get-root-name-from-tarball
+                       tarball-name)
+                      (if subdir
+                          (concat "/" subdir)
+                        "/")))
+             (target-dir (concat user-emacs-directory target-name)))
         (when (f-exists? download-path)
           (f-delete download-path))
         (when (f-exists? target-dir)
@@ -137,45 +139,52 @@
         (lsp--info "Starting to download %s to %s..." url download-path)
         (url-copy-file url download-path)
         (lsp--info "Finished downloading %s..." download-path)
-        (lsp--info "Uncompressing file %s into %s..." download-path tmp-dir)
+        (lsp--info "Uncompressing file %s into %s..."
+                   download-path
+                   tmp-dir)
         (lsp-scheme--untar download-path tmp-dir)
-        (lsp--info "Switching to installation directory %s..." decompressed-path)
+        (lsp--info "Switching to installation directory %s..."
+                   decompressed-path)
         (lsp--info "Building software...")
-        (shell-command (format "cd %s && ./configure --prefix=%s && make && make install && cd -"
-                               decompressed-path
-                               (expand-file-name target-dir)))
+        (call-process-shell-command (format
+                                     "cd %s && ./configure --prefix=%s && make && make install && cd -"
+                                     decompressed-path
+                                     (expand-file-name target-dir))
+                                    nil
+                                    "*Shell command output*"
+                                    t)
         (lsp--info "Installation finished."))
     (error (funcall error-callback err))))
 
-(defun lsp-scheme-select-start-command ()
+(defun lsp-scheme-select-start-command (impl)
   "Select a command to launch an interpreter for the selected implementation"
-  (cond ((string-equal lsp-scheme-implementation "chicken")
+  (cond ((string-equal impl "chicken")
          lsp-scheme-chicken-start-command)
-        ((string-equal lsp-scheme-implementation "guile")
+        ((string-equal impl "guile")
          lsp-scheme-guile-start-command)
         (t (error "Implementation not supported: %s"
                   lsp-scheme-implementation))))
 
-(defun lsp-scheme-ensure-running ()
+(defun lsp-scheme-ensure-running (implementation)
   (interactive)
   (save-excursion
-    (lsp-scheme-run lsp-scheme-command-port)))
+    (lsp-scheme-run implementation lsp-scheme-command-port)))
 
-(defun lsp-scheme-run (port-num)
-  (interactive "nPort number: ")
+(defun lsp-scheme-run (implementation port-num)
+  (interactive "sScheme implementation: \nnPort number: ")
   (message (format "%d" port-num))
-  (let ((cmd (lsp-scheme-select-start-command)))
-    (if (not (comint-check-proc "*lsp-scheme*"))
-        (let ((cmdlist (split-string-and-unquote cmd)))
-          (set-buffer (apply 'make-comint "lsp-scheme"
-                             (car cmdlist)
-                             nil
-                             (cdr cmdlist))))
-      (inferior-scheme-mode))
-    (comint-send-string
-     "*lsp-scheme*"
-     (format "(import (lsp-server)) (lsp-command-server-start %d)\n#t\n"
-             port-num))
+  (let ((cmd (lsp-scheme-select-start-command implementation)))
+    (when (not (comint-check-proc "*lsp-scheme*"))
+      (let ((cmdlist (split-string-and-unquote cmd)))
+        (set-buffer (apply 'make-comint "lsp-scheme"
+                           (car cmdlist)
+                           nil
+                           (cdr cmdlist)))
+        (comint-send-string
+         "*lsp-scheme*"
+         (format "(import (lsp-server)) (lsp-command-server-start %d)\n#t\n"
+                 port-num))))
+    
     (setq scheme-program-name cmd)
     (setq scheme-buffer "*lsp-scheme*")
     (pop-to-buffer-same-window "*lsp-scheme*")))
