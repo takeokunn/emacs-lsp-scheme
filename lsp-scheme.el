@@ -62,7 +62,7 @@
 
 (defcustom lsp-scheme-command-port
   6251
-  "Port of the command server."
+  "Starting port of the command server."
   :type 'integer
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
@@ -190,7 +190,8 @@
     
     (setq scheme-program-name cmd)
     (setq scheme-buffer "*lsp-scheme*")
-    (display-buffer "*lsp-scheme*" '(display-buffer-pop-up-window))))
+    (or (display-buffer-reuse-window (get-buffer "*lsp-scheme*") '())
+        (display-buffer "*lsp-scheme*" '(display-buffer-pop-up-window)))))
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
