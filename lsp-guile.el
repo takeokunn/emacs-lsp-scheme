@@ -29,7 +29,7 @@
 (defun lsp-scheme--guile-start (port)
   (list (or (locate-file "lsp-guile-connect" load-path)
             (locate-file "bin/lsp-guile-connect" load-path))
-        (format "%d" lsp-scheme-command-port)
+        (format "%d" lsp-scheme--command-port)
         (format "%d" port)))
 
 (defvar lsp-scheme--guile-target-dir

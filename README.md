@@ -73,9 +73,8 @@ user loads in a REPL should affect what the LSP server delivers.
 
 In order to solve this, the LSP server was designed to provide a function
 that launches a "command server". It is basically a regular REPL that listens
-on an specific port (customizable through `lsp-scheme-command-port`) for
-socket commands that spawn LSP servers on different threads. This way
-we have a single Scheme instance that provides the REPL functionality
+on an specific port for socket commands that spawn LSP servers on different threads.
+This way we have a single Scheme instance that provides the REPL functionality
 and manages multiple LSP server on different threads.
 
 ## Contributing

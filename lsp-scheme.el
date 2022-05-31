@@ -60,12 +60,8 @@
   :group 'lsp-scheme
   :type 'string)
 
-(defcustom lsp-scheme-command-port
-  6251
-  "Starting port of the command server."
-  :type 'integer
-  :group 'lsp-scheme
-  :package-version '(lsp-scheme . "0.0.1"))
+(defvar lsp-scheme--command-port
+  6251)
 
 (defconst lsp-scheme--json-rpc-version
   "master"
@@ -170,7 +166,8 @@
   (let ((cmd (lsp-scheme-select-start-command implementation)))
     (when (not (comint-check-proc "*lsp-scheme*"))
       (let ((cmdlist (split-string-and-unquote cmd))
-            (port-num (lsp--find-available-port "localhost" lsp-scheme-command-port)))
+            (port-num (lsp--find-available-port "localhost" lsp-scheme--command-port)))
+        (setq lsp-scheme--command-port port-num)
         (apply 'make-comint "lsp-scheme"
                (car cmdlist)
                nil
