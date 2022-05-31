@@ -39,6 +39,10 @@ can just issue `C-c C-l`. Since the REPL is connected to the LSP server, this
 will allow it to fetch symbols defined in the buffer, as well as libraries
 imported by it.
 
+## Known limitations
+
+- currently LSP's error are delivered to the REPL, and not to the *lsp-...* buffer.
+
 ## Implementation specific notes
 
 ### CHICKEN
