@@ -30,6 +30,9 @@
   (list (or (locate-file "lsp-guile-connect" load-path)
             (locate-file "bin/lsp-guile-connect" load-path))
         (format "%d" lsp-scheme--command-port)
+        (format "%d"
+                (lsp--find-available-port "localhost"
+                                          lsp-scheme--command-err-port))
         (format "%d" port)))
 
 (defvar lsp-scheme--guile-target-dir

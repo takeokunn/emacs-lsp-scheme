@@ -32,6 +32,9 @@
   (list (or (locate-file "lsp-chicken-connect" load-path)
             (locate-file "bin/lsp-chicken-connect" load-path))
         (format "%d" lsp-scheme--command-port)
+        (format "%d"
+                (lsp--find-available-port "localhost"
+                                          lsp-scheme--command-err-port))
         (format "%d" port)))
 
 (defvar lsp-scheme--chicken-target-dir

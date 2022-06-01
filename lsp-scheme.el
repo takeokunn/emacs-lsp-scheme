@@ -42,8 +42,8 @@
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
 
-(defcustom lsp-scheme-log-level "warning"
-  "Log level verbosity. One of \"warning\", \"info\", \"debug\"."
+(defcustom lsp-scheme-log-level "debug"
+  "Log level verbosity. One of \"error\", \"warning\", \"info\" or \"debug\"."
   :type 'string
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
@@ -62,6 +62,9 @@
 
 (defvar lsp-scheme--command-port
   6251)
+
+(defvar lsp-scheme--command-err-port
+  7129)
 
 (defconst lsp-scheme--json-rpc-version
   "master"
@@ -166,7 +169,9 @@
   (let ((cmd (lsp-scheme-select-start-command implementation)))
     (when (not (comint-check-proc "*lsp-scheme*"))
       (let ((cmdlist (split-string-and-unquote cmd))
-            (port-num (lsp--find-available-port "localhost" lsp-scheme--command-port)))
+            (port-num (lsp--find-available-port
+                       "localhost"
+                       lsp-scheme--command-port)))
         (setq lsp-scheme--command-port port-num)
         (apply 'make-comint "lsp-scheme"
                (car cmdlist)
@@ -174,7 +179,9 @@
                (cdr cmdlist))
         (comint-send-string
          "*lsp-scheme*"
-         (format "(import (lsp-server)) (parameterize ((lsp-server-log-level '%s)) (lsp-command-server-start %d))\n#t\n"
+         (format "(import (lsp-server))
+                    (parameterize ((lsp-server-log-level '%s))
+                      (lsp-command-server-start %d))\n#t\n"
                  lsp-scheme-log-level
                  port-num))
         (run-with-timer
