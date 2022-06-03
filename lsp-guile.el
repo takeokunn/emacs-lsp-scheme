@@ -20,6 +20,7 @@
 
 (require 'lsp-scheme)
 
+;;; Code:
 (defcustom lsp-scheme-guile-start-command
   "guile --r7rs"
   "Command to start guile's interpreter."
@@ -27,13 +28,15 @@
   :type 'string)
 
 (defun lsp-scheme--guile-start (port)
+  "Return list containing a command to run and its arguments based on PORT.
+The command requests from a running command server (started with
+ `lsp-scheme-run') an LSP server for the current scheme buffer."
+
   (list (or (locate-file "lsp-guile-connect" load-path)
             (locate-file "bin/lsp-guile-connect" load-path))
         (format "%d" lsp-scheme--command-port)
-        (format "%d"
-                (lsp--find-available-port "localhost"
-                                          lsp-scheme--command-err-port))
-        (format "%d" port)))
+        (format "%d" port)
+        (format "%d" lsp-scheme--lsp-err-port)))
 
 (defvar lsp-scheme--guile-target-dir
   "lsp-guile-server/")
@@ -77,17 +80,28 @@
               (concat user-emacs-directory lsp-scheme--guile-target-dir)))
   (setenv "GUILE_LOAD_COMPILED_PATH"
           (concat
-           (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
-           (expand-file-name (concat user-emacs-directory (format "%s/lib/guile/3.0/site-ccache/:"
-                                                                  lsp-scheme--guile-target-dir)))
+           (expand-file-name
+            (concat user-emacs-directory
+                    (format "%s/:" lsp-scheme--guile-target-dir)))
+           (expand-file-name
+            (concat user-emacs-directory
+                    (format "%s/lib/guile/3.0/site-ccache/:"
+                            lsp-scheme--guile-target-dir)))
            (getenv "GUILE_LOAD_COMPILED_PATH")))
   (setenv "GUILE_LOAD_PATH"
           (concat
-           (expand-file-name (concat user-emacs-directory (format "%s/:" lsp-scheme--guile-target-dir)))
-           (expand-file-name (concat user-emacs-directory (format "%s/share/guile/3.0/:"
-                                                                  lsp-scheme--guile-target-dir)))
+           (expand-file-name
+            (concat user-emacs-directory
+                    (format "%s/:" lsp-scheme--guile-target-dir)))
+           (expand-file-name
+            (concat user-emacs-directory
+                    (format "%s/share/guile/3.0/:"
+                            lsp-scheme--guile-target-dir)))
            (getenv "GUILE_LOAD_PATH")))
   (let ((client (gethash 'lsp-guile-server lsp-clients)))
+    (setq lsp-scheme--lsp-err-port
+          (lsp--find-available-port "localhost"
+                                    lsp-scheme--lsp-err-port))
     (when (and client (lsp--server-binary-present? client))
       (lsp-scheme-run "guile"))))
 
