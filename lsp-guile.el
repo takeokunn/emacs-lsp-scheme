@@ -36,7 +36,8 @@ The command requests from a running command server (started with
             (locate-file "bin/lsp-guile-connect" load-path))
         (format "%d" lsp-scheme--command-port)
         (format "%d" port)
-        (format "%d" lsp-scheme--lsp-err-port)))
+        (format "%d" lsp-scheme--lsp-err-port)
+        lsp-scheme-log-level))
 
 (defvar lsp-scheme--guile-target-dir
   "lsp-guile-server/")

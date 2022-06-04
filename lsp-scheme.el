@@ -185,20 +185,21 @@ in the same instance, wait for commands to spawn LSP servers as needed."
                (car cmdlist)
                nil
                (cdr cmdlist))
+
         (comint-send-string
          "*lsp-scheme*"
-         (format "(import (lsp-server))
-                    (parameterize ((lsp-server-log-level '%s))
-                      (lsp-command-server-start %d))\n#t\n"
+         (format "\n(import (lsp-server))\n
+                  (parameterize ((lsp-server-log-level '%s))
+                    (lsp-command-server-start %d))\n#t\n"
                  lsp-scheme-log-level
                  port-num))
         (run-with-timer
-         0.0
+         0.1
          nil
          (lambda ()
            (comint-send-string
             "*lsp-scheme*"
-            "\n")))))
+            "#t\n")))))
 
     (setq scheme-program-name cmd)
     (setq scheme-buffer "*lsp-scheme*")

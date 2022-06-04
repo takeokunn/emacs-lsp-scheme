@@ -30,14 +30,15 @@
   :package-version '(lsp-scheme . "0.0.1"))
 
 (defun lsp-scheme--chicken-start (port)
-    "Return list containing a command to run and its arguments based on PORT.
+  "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
  `lsp-scheme-run') an LSP server for the current scheme buffer."
   (list (or (locate-file "lsp-chicken-connect" load-path)
             (locate-file "bin/lsp-chicken-connect" load-path))
         (format "%d" lsp-scheme--command-port)
         (format "%d" port)
-        (format "%d" lsp-scheme--lsp-err-port)))
+        (format "%d" lsp-scheme--lsp-err-port)
+        lsp-scheme-log-level))
 
 (defvar lsp-scheme--chicken-target-dir
   "lsp-chicken-server/")
