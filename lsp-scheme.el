@@ -61,11 +61,11 @@
   7129)
 
 (defconst lsp-scheme--json-rpc-version
-  "master"
+  "0.2.2"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "master"
+  "0.2.2"
   "Version of JSON-RPC implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
@@ -138,8 +138,6 @@ Makefile."
              (target-dir (concat user-emacs-directory target-name)))
         (when (f-exists? download-path)
           (f-delete download-path))
-        (when (f-exists? target-dir)
-          (f-delete target-dir t))
         (lsp--info "Starting to download %s to %s..." url download-path)
         (url-copy-file url download-path)
         (lsp--info "Finished downloading %s..." download-path)
@@ -150,14 +148,17 @@ Makefile."
         (lsp--info "Switching to installation directory %s..."
                    decompressed-path)
         (lsp--info "Building software...")
-        (call-process-shell-command
-         (format
-          "cd %s && ./configure --prefix=%s && make && make install && cd -"
-          decompressed-path
-          (expand-file-name target-dir))
-         nil
-         "*Shell command output*"
-         t)
+        (let ((cmd (format
+                    "cd %s && ./configure --prefix=%s && make && make install && cd -"
+                    decompressed-path
+                    (expand-file-name target-dir))))
+          (message cmd)
+          (lsp--info "Building software...")
+          (call-process-shell-command cmd
+                                      nil
+                                      "*Shell command output*"
+                                      t))
+
         (lsp--info "Installation finished."))
     (error (funcall error-callback err))))
 
@@ -179,8 +180,14 @@ in the same instance, wait for commands to spawn LSP servers as needed."
       (let ((cmdlist (split-string-and-unquote cmd))
             (port-num (lsp--find-available-port
                        "localhost"
-                       lsp-scheme--command-port)))
+                       lsp-scheme--command-port))
+            (err-port-num
+             (lsp--find-available-port "localhost"
+                                       lsp-scheme--lsp-err-port)))
         (setq lsp-scheme--command-port port-num)
+        (setq lsp-scheme--lsp-err-port
+              err-port-num)
+
         (apply 'make-comint "lsp-scheme"
                (car cmdlist)
                nil
@@ -193,6 +200,7 @@ in the same instance, wait for commands to spawn LSP servers as needed."
                     (lsp-command-server-start %d))\n#t\n"
                  lsp-scheme-log-level
                  port-num))
+
         (run-with-timer
          0.1
          nil

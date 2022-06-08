@@ -55,7 +55,7 @@ The command requests from a running command server (started with
                                           lsp-scheme--guile-target-dir
                                           error-callback
                                           "/guile/")
-             (lsp-scheme-run "guile")
+             (lsp-guile)
              (run-with-timer
               0.0
               nil
@@ -100,9 +100,6 @@ The command requests from a running command server (started with
                             lsp-scheme--guile-target-dir)))
            (getenv "GUILE_LOAD_PATH")))
   (let ((client (gethash 'lsp-guile-server lsp-clients)))
-    (setq lsp-scheme--lsp-err-port
-          (lsp--find-available-port "localhost"
-                                    lsp-scheme--lsp-err-port))
     (when (and client (lsp--server-binary-present? client))
       (lsp-scheme-run "guile"))))
 
