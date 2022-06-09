@@ -23,6 +23,10 @@ $ cd `csi -R chicken.platform -p '(chicken-home)'`
 $ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
 ```
 
+### Guile 3
+
+All you need is to install Guile 3.0.
+
 
 ## Installing
 
