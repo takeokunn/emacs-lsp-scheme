@@ -78,7 +78,7 @@ tarball."
         (lsp-scheme--untar download-path tmp-dir)
         (lsp--info "Switching to installation directory %s..."
                    decompressed-path)
-        (lsp--info (format "Building software..."))
+        (lsp--info (format "Installing software and its dependencies..."))
         (call-process-shell-command
          (format
           "cd %s && CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install && cd -"
@@ -100,8 +100,9 @@ tarball."
                               lsp-scheme--chicken-target-dir
                               "lsp-chicken-connect"))
          (compile-command
-          (format "cd %s && csc lsp-chicken-connect.scm && cd -"
-                  source-dir)))
+          (format "cd %s && CHICKEN_REPOSITORY_PATH=%s csc lsp-chicken-connect.scm && cd -"
+                  source-dir
+                  (getenv "CHICKEN_REPOSITORY_PATH"))))
     (lsp--info compile-command)
     (call-process-shell-command compile-command)
     (lsp--info "Copying %s to %s..."
@@ -143,6 +144,16 @@ tarball."
              (funcall callback))
     (error (funcall error-callback err))))
 
+(defun lsp-chicken--set-environment ()
+  "Set environment variables nedded to run local install."
+  (setenv "CHICKEN_REPOSITORY_PATH"
+          (concat
+           (expand-file-name
+            (concat user-emacs-directory lsp-scheme--chicken-target-dir))
+           ":"
+           (shell-command-to-string
+            "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'"))))
+
 ;;;###autoload
 (defun lsp-chicken ()
   "Setup and start CHICKEN's LSP server."
@@ -150,13 +161,7 @@ tarball."
                (concat user-emacs-directory
                        lsp-scheme--chicken-target-dir))
 
-  (setenv "CHICKEN_REPOSITORY_PATH"
-          (concat
-           (expand-file-name
-            (concat user-emacs-directory lsp-scheme--chicken-target-dir))
-           ":"
-           (shell-command-to-string
-            "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'")))
+  (lsp-chicken--set-environment)
   (let ((client (gethash 'lsp-chicken-server lsp-clients)))
     (setq lsp-scheme--lsp-err-port
           (lsp--find-available-port "localhost"
