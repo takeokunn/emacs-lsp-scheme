@@ -3,7 +3,7 @@
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
 ;; Author: Ricardo Gabriel Herdt
-;; Keywords: languages
+;; Keywords: languages, lisp, tools
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>
+
+;; LSP support for Guile.
 
 (require 'lsp-scheme)
 
@@ -49,10 +51,12 @@ The command requests from a running command server (started with
   (condition-case err
       (progn (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
                                           lsp-scheme--guile-target-dir
+                                          "scheme-json-rpc"
                                           error-callback
                                           "/guile/")
              (lsp-scheme--install-tarball lsp-scheme-server-url
                                           lsp-scheme--guile-target-dir
+                                          "scheme-lsp-server"
                                           error-callback
                                           "/guile/")
              (lsp-guile)

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
 ;; Author: Ricardo Gabriel Herdt
-;; Keywords: languages
+;; Keywords: languages, lisp, tools
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -17,6 +17,14 @@
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>
+
+;; Keywords: lsp, languages
+
+;;; Commentary
+
+;; LSP support for CHICKEN 5.
+
+;;; Version: 0.0.1
 
 (require 'lsp-scheme)
 (require 'seq)
@@ -45,16 +53,17 @@ The command requests from a running command server (started with
 
 (defvar lsp-scheme--chicken-server-version "0.2.0")
 
-(defun lsp-scheme--chicken-install-egg (url target-name error-callback)
-  "Ensure EGG at URL is installed at provided TARGET-NAME."
+(defun lsp-scheme--chicken-install-egg (url target-name project-name error-callback)
+  "Ensure EGG at URL is installed at provided TARGET-NAME.
+PROJECT-NAME should match the name of the root directory of the uncompressed
+tarball."
   (condition-case err
       (let* ((tmp-dir (make-temp-file "lsp-chicken-install" t))
              (tarball-name (file-name-nondirectory url))
-             (download-path (concat tmp-dir "/"  tarball-name))
+             (download-path (concat tmp-dir "/"  project-name "-" tarball-name))
              (decompressed-path
               (concat tmp-dir "/"
-                      (lsp-scheme--get-root-name-from-tarball
-                       tarball-name)))
+                      project-name))
              (target-dir (concat user-emacs-directory target-name)))
         (when (f-exists? download-path)
           (lsp--info "Deleting previously installed software at %s..."
@@ -90,9 +99,11 @@ The command requests from a running command server (started with
                (f-delete lsp-scheme--chicken-target-dir t))
              (lsp-scheme--chicken-install-egg lsp-scheme--json-rpc-url
                                               lsp-scheme--chicken-target-dir
+                                              "scheme-json-rpc"
                                               error-callback)
              (lsp-scheme--chicken-install-egg lsp-scheme-server-url
                                               lsp-scheme--chicken-target-dir
+                                              "scheme-lsp-server"
                                               error-callback)
              (lsp-chicken)
              (run-with-timer

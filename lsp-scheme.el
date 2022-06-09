@@ -18,6 +18,13 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>
 
+;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
+;; Keywords: languages, lisp, tools
+;; Package-Version: 20220609.2002
+;; Package-Requires: ((emacs "25.1") (dash "2.18.0") (f "0.20.0") (ht "2.3") (spinner "1.7.3") (markdown-mode "2.3") (lv "0"))
+
+;;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
+;;; Version: 0.0.1
 
 ;;; Commentary:
 
@@ -28,8 +35,6 @@
 (require 'lsp-mode)
 (require 'comint)
 (require 'cmuscheme)
-
-;; scheme-langserver
 
 (defgroup lsp-scheme-lsp-server nil
   "LSP support for Scheme, using scheme-lsp-server"
@@ -69,13 +74,13 @@
   "Version of JSON-RPC implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
-  (format "https://gitlab.com/rgherdt/scheme-json-rpc/-/archive/%s/scheme-json-rpc-%s.tar.gz"
+  (format "https://codeberg.org/rgherdt/scheme-json-rpc/archive/%s.tar.gz"
           lsp-scheme--json-rpc-version lsp-scheme--json-rpc-version)
   "Path to JSON-RPC library.")
 
 (defcustom lsp-scheme-server-url
-  (format "https://gitlab.com/rgherdt/scheme-lsp-server/-/archive/%s/scheme-lsp-server-%s.tar.gz"
-          lsp-scheme--lsp-server-version lsp-scheme--lsp-server-version)
+  (format "https://codeberg.org/rgherdt/scheme-lsp-server/archive/%s.tar.gz"
+          lsp-scheme--lsp-server-version)
   "Path to Scheme's LSP server."
   :type 'string
   :group 'lsp-scheme
@@ -119,19 +124,19 @@ Uses command defined in `lsp-scheme-untar-script'."
       root)))
 
 (defun lsp-scheme--install-tarball
-    (url target-name error-callback &optional subdir)
+    (url target-name project-name error-callback &optional subdir)
   "Ensure tarball at URL is installed at provided TARGET-NAME.
-In case the installer is not present in the root directory of the uncompressed
+PROJECT-NAME should match the name of the uncompressed tarball.  In case the
+installer is not present in the root directory of the uncompressed
 tarball, SUBDIR can be used to provide a relative directory containing the
 Makefile."
   (condition-case err
       (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
              (tarball-name (file-name-nondirectory url))
-             (download-path (concat tmp-dir "/"  tarball-name))
+             (download-path (concat tmp-dir "/"  project-name "-" tarball-name))
              (decompressed-path
               (concat tmp-dir "/"
-                      (lsp-scheme--get-root-name-from-tarball
-                       tarball-name)
+                      project-name
                       (if subdir
                           (concat "/" subdir)
                         "/")))
