@@ -20,6 +20,7 @@
 
 ;; LSP support for Guile.
 
+(require 'lsp)
 (require 'lsp-scheme)
 
 ;;; Code:
@@ -59,7 +60,6 @@ The command requests from a running command server (started with
                                           "scheme-lsp-server"
                                           error-callback
                                           "/guile/")
-             (lsp-guile)
              (run-with-timer
               0.0
               nil
@@ -77,7 +77,7 @@ The command requests from a running command server (started with
              (funcall callback))
     (error (funcall error-callback err))))
 
-
+;;;###autoload
 (defun lsp-guile ()
   "Setup and start Guile's LSP server."
   (add-to-list 'load-path

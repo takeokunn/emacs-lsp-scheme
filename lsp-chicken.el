@@ -105,7 +105,7 @@ tarball."
                                               lsp-scheme--chicken-target-dir
                                               "scheme-lsp-server"
                                               error-callback)
-             (lsp-chicken)
+             (lsp-scheme)
              (run-with-timer
               0.0
               nil
@@ -123,7 +123,7 @@ tarball."
              (funcall callback))
     (error (funcall error-callback err))))
 
-
+;;;###autoload
 (defun lsp-chicken ()
   "Setup and start CHICKEN's LSP server."
   (add-to-list 'load-path

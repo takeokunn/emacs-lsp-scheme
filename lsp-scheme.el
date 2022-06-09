@@ -41,6 +41,12 @@
   :group 'lsp-mode
   :link '(url-link "https://gitlab.com/rgherdt/scheme-lsp-server"))
 
+(defcustom lsp-scheme-implementation "guile"
+  "Scheme implementation to be used. Supported options: guile, chicken."
+  :type 'string
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.0.1"))
+
 (defcustom lsp-scheme-log-level "debug"
   "Log level verbosity.  One of \"error\", \"warning\", \"info\" or \"debug\"."
   :type 'string
@@ -174,6 +180,17 @@ Makefile."
         ((string-equal implementation "guile")
          lsp-scheme-guile-start-command)
         (t (error "Implementation not supported: %s" implementation))))
+
+(defun lsp-scheme ()
+  "Setup and start Scheme's LSP server."
+  (cond ((equal lsp-scheme-implementation "chicken")
+         (require 'lsp-chicken)
+         (lsp-chicken))
+        ((equal lsp-scheme-implementation "guile")
+         (require 'lsp-guile)
+         (lsp-guile))
+        (t (error (format "Implementation not supported: %s"
+                          lsp-scheme-implementation)))))
 
 (defun lsp-scheme-run (implementation)
   "Start the selected Scheme IMPLEMENTATION.
