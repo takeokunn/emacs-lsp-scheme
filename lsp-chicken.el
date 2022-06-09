@@ -91,6 +91,25 @@ tarball."
         (lsp--info "Installation finished."))
     (error (funcall error-callback err))))
 
+(defun lsp-scheme--install-lsp-chicken-connect ()
+  "Copy lsp-guile-connect.scm to target installation directory."
+  (let* ((source-path
+          (locate-file "scripts/lsp-chicken-connect.scm" load-path))
+         (source-dir (file-name-directory source-path))
+         (target-path (concat user-emacs-directory
+                              lsp-scheme--chicken-target-dir
+                              "lsp-chicken-connect"))
+         (compile-command
+          (format "cd %s && csc lsp-chicken-connect.scm && cd -"
+                  source-dir)))
+    (lsp--info compile-command)
+    (call-process-shell-command compile-command)
+    (lsp--info "Copying %s to %s..."
+               (concat source-dir "lsp-chicken-connect")
+               target-path)
+    (copy-file (concat source-dir "lsp-chicken-connect")
+               target-path)))
+
 (defun lsp-scheme--chicken-ensure-server
     (_client callback error-callback _update?)
   "Ensure LSP Server for Chicken is installed."
@@ -105,6 +124,7 @@ tarball."
                                               lsp-scheme--chicken-target-dir
                                               "scheme-lsp-server"
                                               error-callback)
+             (lsp-scheme--install-lsp-chicken-connect)
              (lsp-scheme)
              (run-with-timer
               0.0

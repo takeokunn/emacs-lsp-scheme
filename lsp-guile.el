@@ -47,6 +47,16 @@ The command requests from a running command server (started with
 
 (defvar lsp-scheme--guile-server-version "0.2.0")
 
+(defun lsp-scheme--install-lsp-guile-connect ()
+  "Copy lsp-guile-connect.scm to target installation directory."
+  (let ((source-path
+         (locate-file "scripts/lsp-guile-connect.scm" load-path))
+        (target-path (concat user-emacs-directory
+                             lsp-scheme--guile-target-dir
+                             "/lsp-guile-connect")))
+    (lsp--info "Copying %s to %s..." source-path target-path)
+    (copy-file source-path target-path)))
+
 (defun lsp-scheme--guile-ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed."
   (condition-case err
@@ -60,6 +70,8 @@ The command requests from a running command server (started with
                                           "scheme-lsp-server"
                                           error-callback
                                           "/guile/")
+             (lsp-scheme--install-lsp-guile-connect)
+             (lsp-scheme)
              (run-with-timer
               0.0
               nil

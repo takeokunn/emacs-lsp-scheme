@@ -76,7 +76,7 @@
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "0.2.2"
+  "0.0.1"
   "Version of JSON-RPC implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
