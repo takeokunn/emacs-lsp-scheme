@@ -7,6 +7,23 @@ This plugin requires an Scheme LSP server in order to work. Currently it uses
 https://gitlab.com/rgherdt/scheme-lsp-server (developed by the same author), which
 is also in an early stage of development. Currently only Guile and CHICKEN are supported.
 
+## Requirements
+
+Please follow the instructions specific to your chosen Scheme implementation
+before proceeding with the installation of this extensions:
+
+### CHICKEN 5
+
+- make sure CHICKEN 5 is installed.
+- install needed eggs:
+  `chicken-install -s r7rs apropos chicken-doc srfi-18 srfi-130`
+- update documentation database:
+```
+$ cd `csi -R chicken.platform -p '(chicken-home)'`
+$ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
+```
+
+
 ## Installing
 
 Currently this software is only available through this repository. Simply check it out 
