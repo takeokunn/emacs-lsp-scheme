@@ -7,10 +7,9 @@
     (spinner "1.7.3")
     (markdown-mode "2.3")
     (lv "0"))
-  :commit "974ce8f8df591d5950c5e6b4a805992c66a7baf2"
+  :commit "17603106aa99d72e502e81d93fef9f5ff8b64d2c"
   :keywords '("languages" "tools" "scheme")
-  :url "https://codeberg.org/rgherdt/emacs-lsp-scheme"
-  :files ("*.el" "*.scm"))
+  :url "https://codeberg.org/rgherdt/emacs-lsp-scheme")
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
