@@ -7,7 +7,7 @@
     (spinner "1.7.3")
     (markdown-mode "2.3")
     (lv "0"))
-  :commit "0414adf100634ef7c64757823292fb009ba85549"
+  :commit "224310a2af3145ca69231f98101786decefef666"
   :keywords '("languages" "tools" "scheme")
   :url "https://codeberg.org/rgherdt/emacs-lsp-scheme")
 ;; Local Variables:

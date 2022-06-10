@@ -25,7 +25,7 @@ $ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
 
 ### Guile 3
 
-All you need is to install Guile 3.0.
+All you need is to install Guile 3.
 
 
 ## Installing
@@ -40,15 +40,19 @@ and add it to your load path, for example:
 
 Add the following lines to your Emacs configuration file:
 
-`(require lsp-chicken)`
-;; alternatively `(require lsp-guile)`
-`(add-hook 'scheme-mode-hook #'lsp)`
+```
+(require lsp-scheme)
+(add-hook 'scheme-mode-hook #'lsp)
+(add-hook 'scheme-mode-hook #'lsp-scheme)
 
-`(add-hook 'scheme-mode-hook #'lsp-chicken)`
-;; alternatively `(require lsp-guile)`
+(setq lsp-scheme-implementation "guile") ;;; also customizable
+;;; or "chicken"
+```
 
-This should on first run automatically install the corresponding LSP server and
-start the client.
+
+This should in the first run automatically install the corresponding LSP server
+and start the client. In case you have trouble, you can manually install the
+server following the corresponding instructions.
 
 ## Usage
 
