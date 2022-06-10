@@ -76,8 +76,8 @@
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "0.0.1"
-  "Version of JSON-RPC implementation used.")
+  "e702d4e085c9553ca2951087ae9ca3c83c264986"
+  "Version of LSP Server implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
   (format "https://codeberg.org/rgherdt/scheme-json-rpc/archive/%s.tar.gz"
