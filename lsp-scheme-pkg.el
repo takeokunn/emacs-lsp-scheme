@@ -10,9 +10,7 @@
   :commit "974ce8f8df591d5950c5e6b4a805992c66a7baf2"
   :keywords '("languages" "tools" "scheme")
   :url "https://codeberg.org/rgherdt/emacs-lsp-scheme"
-  :files ("*.el"
-          "scripts/lsp-chicken-connect.scm"
-          "scripts/lsp-guile-connect.scm"))
+  :files ("*.el" "*.scm"))
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
