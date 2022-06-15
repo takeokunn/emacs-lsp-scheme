@@ -67,12 +67,11 @@
 
 
 (defcustom lsp-scheme-spawner-port
-  "Starting port that spawner server will listen to.
-   This extensions relies on a 'spawner' server. It is basically a server that
-listens on this port and spawns LSP servers upon each incoming connection.
-In case this port is used, the client will try subsequent ports.
-"
   6251
+"Starting port that spawner server will listen to.
+This extensions relies on a 'spawner' server.  It is basically a server that
+listens on this port and spawns LSP servers upon each incoming connection.
+In case this port is used, the client will try subsequent ports."
   :group 'lsp-scheme
   :type 'integer)
 
