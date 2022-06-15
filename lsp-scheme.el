@@ -47,7 +47,7 @@
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
 
-(defcustom lsp-scheme-log-level "debug"
+(defcustom lsp-scheme-log-level "error"
   "Log level verbosity.  One of \"error\", \"warning\", \"info\" or \"debug\"."
   :type 'string
   :group 'lsp-scheme
@@ -66,20 +66,27 @@
   :type 'string)
 
 
-(defvar lsp-scheme--spawner-port
-  6251)
+(defcustom lsp-scheme-spawner-port
+  "Starting port that spawner server will listen to.
+   This extensions relies on a 'spawner' server. It is basically a server that
+listens on this port and spawns LSP servers upon each incoming connection.
+In case this port is used, the client will try subsequent ports.
+"
+  6251
+  :group 'lsp-scheme
+  :type 'integer)
 
 (defconst lsp-scheme--json-rpc-version
-  "0.2.3"
+  "master"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "433a6c49616dc8c4100097df88989114a3b237bb"
+  "master"
   "Version of LSP Server implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
   (format "https://codeberg.org/rgherdt/scheme-json-rpc/archive/%s.tar.gz"
-          lsp-scheme--json-rpc-version lsp-scheme--json-rpc-version)
+          lsp-scheme--json-rpc-version)
   "Path to JSON-RPC library.")
 
 (defcustom lsp-scheme-server-url
@@ -111,7 +118,7 @@ place."
 The command requests from a running command server (started with
  `lsp-scheme-run') an LSP server for the current scheme buffer."
   (list (locate-file "lsp-server-connect.sh" load-path)
-        (format "%d" lsp-scheme--spawner-port)))
+        (format "%d" lsp-scheme-spawner-port)))
 
 (defun lsp-scheme--untar (tar-file target-dir)
   "Decompress tar.gz tarball (TAR-FILE) into TARGET-DIR.
@@ -199,7 +206,6 @@ Makefile."
   "Copy script lsp-server-connect.sh to TARGET-DIR."
   (let* ((source-path
           (locate-file "scripts/lsp-server-connect.sh" load-path))
-         (source-dir (file-name-directory source-path))
          (target-path (concat user-emacs-directory
                               target-dir
                               "lsp-server-connect.sh")))
@@ -230,8 +236,8 @@ in the same instance, which spwans LSP servers for each incoming connection."
       (let ((cmdlist (split-string-and-unquote cmd))
             (port-num (lsp--find-available-port
                        "localhost"
-                       lsp-scheme--spawner-port)))
-        (setq lsp-scheme--spawner-port port-num)
+                       lsp-scheme-spawner-port)))
+        (setq lsp-scheme-spawner-port port-num)
         (apply 'make-comint "lsp-scheme"
                (car cmdlist)
                nil
@@ -244,7 +250,7 @@ in the same instance, which spwans LSP servers for each incoming connection."
            (parameterize ((lsp-server-log-level '%s))
               (lsp-spawner-start %s))"
            lsp-scheme-log-level
-           lsp-scheme--spawner-port))
+           lsp-scheme-spawner-port))
 
         (run-with-timer
          0.1

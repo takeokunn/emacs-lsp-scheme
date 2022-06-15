@@ -46,7 +46,6 @@ Add the following lines to your Emacs configuration file:
 (add-hook 'scheme-mode-hook #'lsp-scheme)
 
 (setq lsp-scheme-implementation "guile") ;;; also customizable
-;;; or "chicken"
 ```
 
 
@@ -56,13 +55,13 @@ server following the corresponding instructions.
 
 ## Usage
 
-This LSP client tries to implement an workflow similar to other Lisp-related Emacs
-modes. For instance, it relies on the interaction between the user and the REPL
-to load information needed. The interaction is currently based on Emacs built-in
-Scheme `inferior-mode`. So, for instance, in order to load the current buffer you
-can just issue `C-c C-l`. Since the REPL is connected to the LSP server, this
-will allow it to fetch symbols defined in the buffer, as well as libraries
-imported by it.
+This LSP client tries to implement an workflow similar to other Lisp-related
+Emacs modes. For instance, it relies on the interaction between the user and the
+REPL to load information needed. The interaction is currently based on Emacs
+built-in Scheme `inferior-mode`. So, for instance, in order to load the current
+buffer you can just issue `C-c C-l`. Since the REPL is connected to the LSP
+server, this will allow it to fetch symbols defined in the buffer, as well as
+libraries imported by it.
 
 
 ## Implementation specific notes
@@ -73,14 +72,14 @@ Since CHICKEN's run-time does not provide information regarding the location of
 defined symbols, we implemented an workaround that scans existing source code
 for symbols. This is done for any project opened in Emacs. By setting
 the environment variable CHICKEN_SRC to point to the source code of CHICKEN
-itself, the LSP server is able to provide location information of symbols defined
-in it.
+itself, the LSP server is able to provide location information of symbols
+defined in it.
 
 The current scanning algorithm is pretty simple and "imports" symbols from
 our modules found, regardless of it being actually used by your project
-or not. In the future we may consider a more sophisticated solution that actually
-keeps track of imported modules by parsing .EGG files and possibly any includes.
-Suggestions for improving this are obviously welcome.
+or not. In the future we may consider a more sophisticated solution that
+actually keeps track of imported modules by parsing .EGG files and possibly any
+includes. Suggestions for improving this are obviously welcome.
 
 ## Design notes
 
@@ -94,13 +93,14 @@ with it to provide information like symbol location. In other words, what the
 user loads in a REPL should affect what the LSP server delivers.
 
 In order to solve this, the LSP server was designed to provide a function
-that launches a "command server". It is basically a regular REPL that listens
-on an specific port for socket commands that spawn LSP servers on different threads.
-This way we have a single Scheme instance that provides the REPL functionality
-and manages multiple LSP server on different threads.
+that launches a "spawner server". It is basically a function that listens on
+a given TCP port (the starting number is customizable by
+`lsp-scheme--spawner-port`) for incoming connections, and spawns LSP servers for
+each connection. This way we have a single Scheme instance that provides the
+REPL functionality and manages multiple LSP servers on different threads.
 
 ## Contributing
 
 Any contribution to this extension or the LSP server is welcome. Feel
-free to open issues or contact me (rgherdt on Libera's #chicken, #guile, #scheme)
-to discuss ideas and improvements.
+free to open issues or contact me (rgherdt on Libera's #chicken, #guile,
+#scheme) to discuss ideas and improvements.
