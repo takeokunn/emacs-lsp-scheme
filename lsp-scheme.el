@@ -1,4 +1,4 @@
-;;; lsp-scheme.el --- lsp-mode scheme integration    -*- lexical-binding: t; -*-
+;;; lsp-scheme.el --- Scheme support for lsp-mode    -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
@@ -21,10 +21,10 @@
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
 ;; Package-Version: 20220609.2002
-;; Package-Requires: ((emacs "25.1") (dash "2.18.0") (f "0.20.0") (ht "2.3") (spinner "1.7.3") (markdown-mode "2.3") (lv "0"))
+;; Package-Requires: ((emacs "25.1") (dash "2.18.0") (f "0.20.0") (ht "2.3") (spinner "1.7.3") (markdown-mode "2.3") (lv "0.1.0"))
 
 ;;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
-;;; Version: 0.0.1
+;;; Version: 0.0.2
 
 ;;; Commentary:
 
@@ -178,6 +178,7 @@ Makefile."
          lsp-scheme-guile-start-command)
         (t (error "Implementation not supported: %s" implementation))))
 
+;;;###autoload
 (defun lsp-scheme ()
   "Setup and start Scheme's LSP server."
   ;; TODO: any better idea to deal with this circular dependency?

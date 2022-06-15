@@ -1,4 +1,4 @@
-;;; lsp-chicken.el --- lsp-mode CHICKEN integration    -*- lexical-binding: t; -*-
+;;; lsp-chicken.el --- CHICKEN support for lsp-mode    -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
@@ -19,21 +19,23 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 ;; Keywords: lsp, languages
+;; Package-Requires: ((emacs "25.1") (dash "2.18.0") (f "0.20.0") (ht "2.3") (spinner "1.7.3") (markdown-mode "2.3") (lv "0.1.0"))
 
-;;; Commentary
+;;; Commentary:
 
 ;; LSP support for CHICKEN 5.
 
-;;; Version: 0.0.1
+;;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
+;;; Version: 0.0.2
 
 (require 'lsp-scheme)
 (require 'seq)
 
 ;;; Code:
-(defvar lsp-scheme--chicken-target-dir
+(defvar lsp-chicken--target-dir
   "lsp-chicken-server/")
 
-(defun lsp-scheme--chicken-install-egg (egg-name target-name error-callback)
+(defun lsp-chicken--install-egg (egg-name target-name error-callback)
   "Ensure EGG-NAME is installed at provided TARGET-NAME."
   (condition-case err
       (let ((target-dir (concat user-emacs-directory target-name)))
@@ -50,20 +52,20 @@
         (lsp--info "Installation finished."))
     (error (funcall error-callback err))))
 
-(defun lsp--chicken-server-installed-p ()
+(defun lsp-chicken--server-installed-p ()
   "Check if CHICKEN LSP server is installed."
   (or (executable-find "chicken-lsp-server")
       (locate-file "chicken-lsp-server" load-path)
       (locate-file "bin/chicken-lsp-server" load-path)))
 
-(defun lsp-scheme--chicken-ensure-server
+(defun lsp-chicken--ensure-server
     (_client callback error-callback _update?)
   "Ensure LSP Server for Chicken is installed and running."
   (condition-case err
-      (progn (when (f-exists? lsp-scheme--chicken-target-dir)
-               (f-delete lsp-scheme--chicken-target-dir t))
+      (progn (when (f-exists? lsp-chicken--target-dir)
+               (f-delete lsp-chicken--target-dir t))
              (lsp-scheme--chicken-install-egg "lsp-server"
-                                              lsp-scheme--chicken-target-dir
+                                              lsp-chicken--target-dir
                                               error-callback)
              (lsp-scheme)
              (run-with-timer 0.0
@@ -77,7 +79,7 @@
   (setenv "CHICKEN_REPOSITORY_PATH"
           (concat
            (expand-file-name
-            (concat user-emacs-directory lsp-scheme--chicken-target-dir))
+            (concat user-emacs-directory lsp-chicken--target-dir))
            ":"
            (shell-command-to-string
             "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'"))))
@@ -87,7 +89,7 @@
   "Setup and start CHICKEN's LSP server."
   (add-to-list 'load-path
                (concat user-emacs-directory
-                       lsp-scheme--chicken-target-dir))
+                       lsp-chicken--target-dir))
 
   (lsp-chicken--setup-environment)
   (let ((client (gethash 'lsp-chicken-server lsp-clients)))
@@ -97,7 +99,7 @@
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-stdio-connection
                                    #'lsp-scheme--connect
-                                   #'lsp--chicken-server-installed-p)
+                                   #'lsp-chicken--server-installed-p)
                   :major-modes '(scheme-mode)
                   :priority 1
                   :server-id 'lsp-chicken-server
