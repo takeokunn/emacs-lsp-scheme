@@ -30,35 +30,11 @@
   :group 'lsp-guile
   :type 'string)
 
-(defun lsp-scheme--guile-start (port)
-  "Return list containing a command to run and its arguments based on PORT.
-The command requests from a running command server (started with
- `lsp-scheme-run') an LSP server for the current scheme buffer."
-
-  (list (or (locate-file "lsp-guile-connect" load-path)
-            (locate-file "bin/lsp-guile-connect" load-path))
-        (format "%d" lsp-scheme--command-port)
-        (format "%d" port)
-        (format "%d" lsp-scheme--lsp-err-port)
-        lsp-scheme-log-level))
-
 (defvar lsp-scheme--guile-target-dir
   "lsp-guile-server/")
 
-(defvar lsp-scheme--guile-server-version "0.2.0")
-
-(defun lsp-scheme--install-lsp-guile-connect ()
-  "Copy lsp-guile-connect.scm to target installation directory."
-  (let ((source-path
-         (locate-file "scripts/lsp-guile-connect.scm" load-path))
-        (target-path (concat user-emacs-directory
-                             lsp-scheme--guile-target-dir
-                             "/lsp-guile-connect")))
-    (lsp--info "Copying %s to %s..." source-path target-path)
-    (copy-file source-path target-path)))
-
 (defun lsp-scheme--guile-ensure-server (_client callback error-callback _update?)
-  "Ensure LSP Server for Guile is installed."
+  "Ensure LSP Server for Guile is installed and running."
   (condition-case err
       (progn (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
                                           lsp-scheme--guile-target-dir
@@ -70,31 +46,24 @@ The command requests from a running command server (started with
                                           "scheme-lsp-server"
                                           error-callback
                                           "/guile/")
-             (lsp-scheme--install-lsp-guile-connect)
              (lsp-scheme)
-             (run-with-timer
-              0.0
-              nil
-              (lambda ()
-                (let* ((buffers (buffer-list))
-                       (scheme-buffers
-                        (seq-filter
-                         (lambda (b)
-                           (eq (buffer-local-value 'major-mode b)
-                               'scheme-mode))
-                         buffers)))
-                  (dolist (b scheme-buffers)
-                    (with-current-buffer b
-                      (revert-buffer nil t))))))
+             (run-with-timer 0.0
+                             nil
+                             #'lsp-scheme--restart-buffers)
              (funcall callback))
     (error (funcall error-callback err))))
 
-;;;###autoload
-(defun lsp-guile ()
-  "Setup and start Guile's LSP server."
+(defun lsp--guile-server-installed-p ()
+  "Check if Guile LSP server is installed."
+  (or (executable-find "guile-lsp-server")
+      (locate-file "guile-lsp-server" load-path)
+      (locate-file "bin/guile-lsp-server" load-path)))
+
+(defun lsp-guile--setup-environment ()
+  "Set environment variables nedded to run local install."
   (add-to-list 'load-path
-             (expand-file-name
-              (concat user-emacs-directory lsp-scheme--guile-target-dir)))
+               (expand-file-name
+                (concat user-emacs-directory lsp-scheme--guile-target-dir)))
   (setenv "GUILE_LOAD_COMPILED_PATH"
           (concat
            (expand-file-name
@@ -114,14 +83,20 @@ The command requests from a running command server (started with
             (concat user-emacs-directory
                     (format "%s/share/guile/3.0/:"
                             lsp-scheme--guile-target-dir)))
-           (getenv "GUILE_LOAD_PATH")))
+           (getenv "GUILE_LOAD_PATH"))))
+
+;;;###autoload
+(defun lsp-guile ()
+  "Setup and start Guile's LSP server."
+  (lsp-guile--setup-environment)
   (let ((client (gethash 'lsp-guile-server lsp-clients)))
     (when (and client (lsp--server-binary-present? client))
       (lsp-scheme-run "guile"))))
 
 (lsp-register-client
- (make-lsp-client :new-connection (lsp-tcp-connection
-                                   #'lsp-scheme--guile-start)
+ (make-lsp-client :new-connection (lsp-stdio-connection
+                                   #'lsp-scheme--connect
+                                   #'lsp--guile-server-installed-p)
                   :major-modes '(scheme-mode)
                   :priority 1
                   :server-id 'lsp-guile-server

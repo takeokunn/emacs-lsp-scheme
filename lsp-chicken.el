@@ -30,121 +30,49 @@
 (require 'seq)
 
 ;;; Code:
-(defcustom lsp-scheme-chicken-connect-command
-  (locate-file "lsp-chicken-connect" load-path)
-  "Command to spawn a new LSP connection."
-  :type 'string
-  :group 'lsp-scheme
-  :package-version '(lsp-scheme . "0.0.1"))
-
-(defun lsp-scheme--chicken-start (port)
-  "Return list containing a command to run and its arguments based on PORT.
-The command requests from a running command server (started with
- `lsp-scheme-run') an LSP server for the current scheme buffer."
-  (list (or (locate-file "lsp-chicken-connect" load-path)
-            (locate-file "bin/lsp-chicken-connect" load-path))
-        (format "%d" lsp-scheme--command-port)
-        (format "%d" port)
-        (format "%d" lsp-scheme--lsp-err-port)
-        lsp-scheme-log-level))
-
 (defvar lsp-scheme--chicken-target-dir
   "lsp-chicken-server/")
 
-(defvar lsp-scheme--chicken-server-version "0.2.0")
-
-(defun lsp-scheme--chicken-install-egg (url target-name project-name error-callback)
-  "Ensure EGG at URL is installed at provided TARGET-NAME.
-PROJECT-NAME should match the name of the root directory of the uncompressed
-tarball."
+(defun lsp-scheme--chicken-install-egg (egg-name target-name error-callback)
+  "Ensure EGG-NAME is installed at provided TARGET-NAME."
   (condition-case err
-      (let* ((tmp-dir (make-temp-file "lsp-chicken-install" t))
-             (tarball-name (file-name-nondirectory url))
-             (download-path (concat tmp-dir "/"  project-name "-" tarball-name))
-             (decompressed-path
-              (concat tmp-dir "/"
-                      project-name))
-             (target-dir (concat user-emacs-directory target-name)))
-        (when (f-exists? download-path)
-          (lsp--info "Deleting previously installed software at %s..."
-                     download-path)
-          (f-delete download-path))
-        (lsp--info "Starting to download %s to %s..." url download-path)
-        (url-copy-file url download-path)
-        (lsp--info "Finished downloading %s..." download-path)
-        (lsp--info "Uncompressing file %s into %s..."
-                   download-path
-                   tmp-dir)
-        (lsp-scheme--untar download-path tmp-dir)
-        (lsp--info "Switching to installation directory %s..."
-                   decompressed-path)
+      (let ((target-dir (concat user-emacs-directory target-name)))
         (lsp--info (format "Installing software and its dependencies..."))
         (call-process-shell-command
          (format
-          "cd %s && CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install && cd -"
-          decompressed-path
+          "CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install %s"
           (expand-file-name target-dir)
-          (expand-file-name target-dir))
+          (expand-file-name target-dir)
+          egg-name)
          nil
          "*Shell Command Output*"
          t)
         (lsp--info "Installation finished."))
     (error (funcall error-callback err))))
 
-(defun lsp-scheme--install-lsp-chicken-connect ()
-  "Copy lsp-guile-connect.scm to target installation directory."
-  (let* ((source-path
-          (locate-file "scripts/lsp-chicken-connect.scm" load-path))
-         (source-dir (file-name-directory source-path))
-         (target-path (concat user-emacs-directory
-                              lsp-scheme--chicken-target-dir
-                              "lsp-chicken-connect"))
-         (compile-command
-          (format "cd %s && CHICKEN_REPOSITORY_PATH=%s csc lsp-chicken-connect.scm && cd -"
-                  source-dir
-                  (getenv "CHICKEN_REPOSITORY_PATH"))))
-    (lsp--info compile-command)
-    (call-process-shell-command compile-command)
-    (lsp--info "Copying %s to %s..."
-               (concat source-dir "lsp-chicken-connect")
-               target-path)
-    (copy-file (concat source-dir "lsp-chicken-connect")
-               target-path)))
+(defun lsp--chicken-server-installed-p ()
+  "Check if CHICKEN LSP server is installed."
+  (or (executable-find "chicken-lsp-server")
+      (locate-file "chicken-lsp-server" load-path)
+      (locate-file "bin/chicken-lsp-server" load-path)))
 
 (defun lsp-scheme--chicken-ensure-server
     (_client callback error-callback _update?)
-  "Ensure LSP Server for Chicken is installed."
+  "Ensure LSP Server for Chicken is installed and running."
   (condition-case err
       (progn (when (f-exists? lsp-scheme--chicken-target-dir)
                (f-delete lsp-scheme--chicken-target-dir t))
-             (lsp-scheme--chicken-install-egg lsp-scheme--json-rpc-url
+             (lsp-scheme--chicken-install-egg "lsp-server"
                                               lsp-scheme--chicken-target-dir
-                                              "scheme-json-rpc"
                                               error-callback)
-             (lsp-scheme--chicken-install-egg lsp-scheme-server-url
-                                              lsp-scheme--chicken-target-dir
-                                              "scheme-lsp-server"
-                                              error-callback)
-             (lsp-scheme--install-lsp-chicken-connect)
              (lsp-scheme)
-             (run-with-timer
-              0.0
-              nil
-              (lambda ()
-                (let* ((buffers (buffer-list))
-                       (scheme-buffers
-                        (seq-filter
-                         (lambda (b)
-                           (eq (buffer-local-value 'major-mode b)
-                               'scheme-mode))
-                         buffers)))
-                  (dolist (b scheme-buffers)
-                    (with-current-buffer b
-                      (revert-buffer nil t))))))
+             (run-with-timer 0.0
+                             nil
+                             #'lsp-scheme--restart-buffers)
              (funcall callback))
     (error (funcall error-callback err))))
 
-(defun lsp-chicken--set-environment ()
+(defun lsp-chicken--setup-environment ()
   "Set environment variables nedded to run local install."
   (setenv "CHICKEN_REPOSITORY_PATH"
           (concat
@@ -161,7 +89,7 @@ tarball."
                (concat user-emacs-directory
                        lsp-scheme--chicken-target-dir))
 
-  (lsp-chicken--set-environment)
+  (lsp-chicken--setup-environment)
   (let ((client (gethash 'lsp-chicken-server lsp-clients)))
     (setq lsp-scheme--lsp-err-port
           (lsp--find-available-port "localhost"
@@ -170,8 +98,9 @@ tarball."
       (lsp-scheme-run "chicken"))))
 
 (lsp-register-client
- (make-lsp-client :new-connection (lsp-tcp-connection
-                                   #'lsp-scheme--chicken-start)
+ (make-lsp-client :new-connection (lsp-stdio-connection
+                                   #'lsp-scheme--connect
+                                   #'lsp--chicken-server-installed-p)
                   :major-modes '(scheme-mode)
                   :priority 1
                   :server-id 'lsp-chicken-server

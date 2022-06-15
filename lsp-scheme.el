@@ -65,18 +65,16 @@
   :group 'lsp-scheme
   :type 'string)
 
-(defvar lsp-scheme--command-port
+
+(defvar lsp-scheme--spawner-port
   6251)
 
-(defvar lsp-scheme--lsp-err-port
-  7129)
-
 (defconst lsp-scheme--json-rpc-version
-  "0.2.2"
+  "0.2.3"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "e702d4e085c9553ca2951087ae9ca3c83c264986"
+  "433a6c49616dc8c4100097df88989114a3b237bb"
   "Version of LSP Server implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
@@ -108,6 +106,13 @@ place."
   :type 'string
   :package-version '(lsp-scheme . "0.0.1"))
 
+(defun lsp-scheme--connect ()
+  "Return list containing a command to run and its arguments based on PORT.
+The command requests from a running command server (started with
+ `lsp-scheme-run') an LSP server for the current scheme buffer."
+  (list (locate-file "lsp-server-connect.sh" load-path)
+        (format "%d" lsp-scheme--spawner-port)))
+
 (defun lsp-scheme--untar (tar-file target-dir)
   "Decompress tar.gz tarball (TAR-FILE) into TARGET-DIR.
 Uses command defined in `lsp-scheme-untar-script'."
@@ -120,14 +125,6 @@ Uses command defined in `lsp-scheme-untar-script'."
    nil
    "*Shell Command Output*"
    t))
-
-
-(defun lsp-scheme--get-root-name-from-tarball (file-name)
-  "Exclude extension .tar.gz or .tar from FILE-NAME."
-  (let ((root (file-name-sans-extension file-name)))
-    (if (string-equal (file-name-extension root) "tar")
-        (file-name-sans-extension root)
-      root)))
 
 (defun lsp-scheme--install-tarball
     (url target-name project-name error-callback &optional subdir)
@@ -183,6 +180,11 @@ Makefile."
 
 (defun lsp-scheme ()
   "Setup and start Scheme's LSP server."
+  ;; TODO: any better idea to deal with this circular dependency?
+  ;; I could create yet another package with code needed by
+  ;; implementation-specific parts, but I'm not sure it's worth the
+  ;; trouble. Flycheck complains about missing definitions of lsp-chicken
+  ;; and lsp-guile though.
   (cond ((equal lsp-scheme-implementation "chicken")
          (require 'lsp-chicken)
          (lsp-chicken))
@@ -192,24 +194,43 @@ Makefile."
         (t (error (format "Implementation not supported: %s"
                           lsp-scheme-implementation)))))
 
+(defun lsp-scheme--install-lsp-server-spawn (target-dir)
+  "Copy script lsp-server-connect.sh to TARGET-DIR."
+  (let* ((source-path
+          (locate-file "scripts/lsp-server-connect.sh" load-path))
+         (source-dir (file-name-directory source-path))
+         (target-path (concat user-emacs-directory
+                              target-dir
+                              "lsp-server-connect.sh")))
+    (lsp--info "Copying %s to %s..." source-path target-path)
+    (copy-file source-path target-path)))
+
+
+(defun lsp-scheme--restart-buffers ()
+  "Restart lsp-scheme buffers."
+  (let* ((buffers (buffer-list))
+            (scheme-buffers
+             (seq-filter
+              (lambda (b)
+                (eq (buffer-local-value 'major-mode b)
+                    'scheme-mode))
+              buffers)))
+       (dolist (b scheme-buffers)
+         (with-current-buffer b
+           (revert-buffer nil t)))))
+
 (defun lsp-scheme-run (implementation)
   "Start the selected Scheme IMPLEMENTATION.
-A REPL is opened in an *lsp-scheme* buffer, and a command server is launched
-in the same instance, wait for commands to spawn LSP servers as needed."
+A REPL is opened in an *lsp-scheme* buffer, and a spawner server is launched
+in the same instance, which spwans LSP servers for each incoming connection."
   (interactive "sScheme implementation: \n")
   (let ((cmd (lsp-scheme--select-start-command implementation)))
     (when (not (comint-check-proc "*lsp-scheme*"))
       (let ((cmdlist (split-string-and-unquote cmd))
             (port-num (lsp--find-available-port
                        "localhost"
-                       lsp-scheme--command-port))
-            (err-port-num
-             (lsp--find-available-port "localhost"
-                                       lsp-scheme--lsp-err-port)))
-        (setq lsp-scheme--command-port port-num)
-        (setq lsp-scheme--lsp-err-port
-              err-port-num)
-
+                       lsp-scheme--spawner-port)))
+        (setq lsp-scheme--spawner-port port-num)
         (apply 'make-comint "lsp-scheme"
                (car cmdlist)
                nil
@@ -217,11 +238,12 @@ in the same instance, wait for commands to spawn LSP servers as needed."
 
         (comint-send-string
          "*lsp-scheme*"
-         (format "\n(import (lsp-server))\n
-                  (parameterize ((lsp-server-log-level '%s))
-                    (lsp-command-server-start %d))\n#t\n"
-                 lsp-scheme-log-level
-                 port-num))
+         (format
+          "(import (lsp-server))
+           (parameterize ((lsp-server-log-level '%s))
+              (lsp-spawner-start %s))"
+           lsp-scheme-log-level
+           lsp-scheme--spawner-port))
 
         (run-with-timer
          0.1
