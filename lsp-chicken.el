@@ -91,9 +91,6 @@
 
   (lsp-chicken--setup-environment)
   (let ((client (gethash 'lsp-chicken-server lsp-clients)))
-    (setq lsp-scheme--lsp-err-port
-          (lsp--find-available-port "localhost"
-                                    lsp-scheme--lsp-err-port))
     (when (and client (lsp--server-binary-present? client))
       (lsp-scheme-run "chicken"))))
 
