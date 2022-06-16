@@ -69,9 +69,9 @@ _CLIENT and _UPDATE? are ignored."
   (condition-case err
       (progn (when (f-exists? lsp-chicken--target-dir)
                (f-delete lsp-chicken--target-dir t))
-             (lsp-scheme--chicken-install-egg "lsp-server"
-                                              lsp-chicken--target-dir
-                                              error-callback)
+             (lsp-chicken--install-egg "lsp-server"
+                                       lsp-chicken--target-dir
+                                       error-callback)
              (lsp-scheme)
              (run-with-timer 0.0
                              nil
