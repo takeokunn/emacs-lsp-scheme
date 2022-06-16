@@ -36,7 +36,9 @@
   "lsp-chicken-server/")
 
 (defun lsp-chicken--install-egg (egg-name target-name error-callback)
-  "Ensure EGG-NAME is installed at provided TARGET-NAME."
+  "Ensure EGG-NAME is installed at provided TARGET-NAME.
+This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
+and thus calls its ERROR-CALLBACK in case something is wrong"
   (condition-case err
       (let ((target-dir (concat user-emacs-directory target-name)))
         (lsp--info (format "Installing software and its dependencies..."))
@@ -60,7 +62,10 @@
 
 (defun lsp-chicken--ensure-server
     (_client callback error-callback _update?)
-  "Ensure LSP Server for Chicken is installed and running."
+  "Ensure LSP Server for Chicken is installed and running.
+This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
+and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
+_CLIENT and _UPDATE? are ignored."
   (condition-case err
       (progn (when (f-exists? lsp-chicken--target-dir)
                (f-delete lsp-chicken--target-dir t))
@@ -103,7 +108,7 @@
                   :major-modes '(scheme-mode)
                   :priority 1
                   :server-id 'lsp-chicken-server
-                  :download-server-fn #'lsp-scheme--chicken-ensure-server))
+                  :download-server-fn #'lsp-chicken--ensure-server))
 
 (provide 'lsp-chicken)
 

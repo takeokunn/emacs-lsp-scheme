@@ -42,7 +42,7 @@
   :link '(url-link "https://gitlab.com/rgherdt/scheme-lsp-server"))
 
 (defcustom lsp-scheme-implementation "guile"
-  "Scheme implementation to be used. Supported options: guile, chicken."
+  "Scheme implementation to be used.  Supported options: guile, chicken."
   :type 'string
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
@@ -135,10 +135,11 @@ Uses command defined in `lsp-scheme-untar-script'."
 (defun lsp-scheme--install-tarball
     (url target-name project-name error-callback &optional subdir)
   "Ensure tarball at URL is installed at provided TARGET-NAME.
-PROJECT-NAME should match the name of the uncompressed tarball.  In case the
-installer is not present in the root directory of the uncompressed
-tarball, SUBDIR can be used to provide a relative directory containing the
-Makefile."
+This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
+and thus calls its ERROR-CALLBACK in case something is wrong.  PROJECT-NAME
+should match the name of the uncompressed tarball.  In case the installer is not
+present in the root directory of the uncompressed tarball, SUBDIR can be used to
+provide a relative directory containing the Makefile."
   (condition-case err
       (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
              (tarball-name (file-name-nondirectory url))
@@ -213,7 +214,7 @@ Makefile."
 
 
 (defun lsp-scheme--restart-buffers ()
-  "Restart lsp-scheme buffers."
+  "Restart `lsp-scheme` buffers."
   (let* ((buffers (buffer-list))
             (scheme-buffers
              (seq-filter

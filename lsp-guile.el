@@ -42,7 +42,10 @@
   "lsp-guile-server/")
 
 (defun lsp-guile--ensure-server (_client callback error-callback _update?)
-  "Ensure LSP Server for Guile is installed and running."
+  "Ensure LSP Server for Guile is installed and running.
+This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
+and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
+_CLIENT and _UPDATE? are ignored."
   (condition-case err
       (progn (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
                                           lsp-guile--target-dir
