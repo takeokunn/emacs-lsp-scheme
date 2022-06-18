@@ -76,11 +76,11 @@ In case this port is used, the client will try subsequent ports."
   :type 'integer)
 
 (defconst lsp-scheme--json-rpc-version
-  "0.2.3"
+  "0.2.4"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "433a6c49616dc8c4100097df88989114a3b237bb"
+  "d35e00d2cbf6155601de7b22754424c8531be2b8"
   "Version of LSP Server implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
