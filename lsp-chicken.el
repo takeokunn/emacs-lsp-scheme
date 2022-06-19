@@ -33,7 +33,7 @@
 
 ;;; Code:
 (defvar lsp-chicken--install-dir
-  (f-join lsp-scheme-install-dir "lsp-chicken-server/"))
+  (f-join lsp-server-install-dir "lsp-chicken-server/"))
 
 (defun lsp-chicken--install-egg (egg-name install-dir error-callback)
   "Ensure EGG-NAME is installed at provided INSTALL-DIR.
