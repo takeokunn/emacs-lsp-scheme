@@ -33,8 +33,8 @@
 
 ;;; Code:
 
-(defvar lsp-guile--target-dir
-  "lsp-guile-server/")
+(defvar lsp-guile--install-dir
+  (f-join lsp-server-install-dir "lsp-guile-server/"))
 
 (defun lsp-guile--ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed and running.
@@ -43,12 +43,12 @@ and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 _CLIENT and _UPDATE? are ignored."
   (condition-case err
       (progn (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
-                                          lsp-guile--target-dir
+                                          lsp-guile--install-dir
                                           "scheme-json-rpc"
                                           error-callback
                                           "/guile/")
              (lsp-scheme--install-tarball lsp-scheme-server-url
-                                          lsp-guile--target-dir
+                                          lsp-guile--install-dir
                                           "scheme-lsp-server"
                                           error-callback
                                           "/guile/")
@@ -68,27 +68,18 @@ _CLIENT and _UPDATE? are ignored."
 (defun lsp-guile--setup-environment ()
   "Set environment variables nedded to run local install."
   (add-to-list 'load-path
-               (expand-file-name
-                (concat user-emacs-directory lsp-guile--target-dir)))
+               lsp-guile--install-dir)
   (setenv "GUILE_LOAD_COMPILED_PATH"
           (concat
-           (expand-file-name
-            (concat user-emacs-directory
-                    (format "%s/:" lsp-guile--target-dir)))
-           (expand-file-name
-            (concat user-emacs-directory
-                    (format "%s/lib/guile/3.0/site-ccache/:"
-                            lsp-guile--target-dir)))
+           (f-join lsp-guile--install-dir ":")
+           (f-join lsp-guile--install-dir
+                   "lib/guile/3.0/site-ccache/:")
            (getenv "GUILE_LOAD_COMPILED_PATH")))
   (setenv "GUILE_LOAD_PATH"
           (concat
-           (expand-file-name
-            (concat user-emacs-directory
-                    (format "%s/:" lsp-guile--target-dir)))
-           (expand-file-name
-            (concat user-emacs-directory
-                    (format "%s/share/guile/3.0/:"
-                            lsp-guile--target-dir)))
+           (f-join lsp-guile--install-dir ":")
+           (f-join lsp-guile--install-dir
+                   "share/guile/3.0/:")
            (getenv "GUILE_LOAD_PATH"))))
 
 ;;;###autoload

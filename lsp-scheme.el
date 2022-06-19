@@ -133,8 +133,8 @@ Uses command defined in `lsp-scheme-untar-script'."
    t))
 
 (defun lsp-scheme--install-tarball
-    (url target-name project-name error-callback &optional subdir)
-  "Ensure tarball at URL is installed at provided TARGET-NAME.
+    (url install-dir project-name error-callback &optional subdir)
+  "Ensure tarball at URL is installed at provided INSTALL-DIR.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its ERROR-CALLBACK in case something is wrong.  PROJECT-NAME
 should match the name of the uncompressed tarball.  In case the installer is not
@@ -149,8 +149,7 @@ provide a relative directory containing the Makefile."
                       project-name
                       (if subdir
                           (concat "/" subdir)
-                        "/")))
-             (target-dir (concat user-emacs-directory target-name)))
+                        "/"))))
         (when (f-exists? download-path)
           (f-delete download-path))
         (lsp--info "Starting to download %s to %s..." url download-path)
@@ -166,7 +165,7 @@ provide a relative directory containing the Makefile."
         (let ((cmd (format
                     "cd %s && ./configure --prefix=%s && make && make install && cd -"
                     decompressed-path
-                    (expand-file-name target-dir))))
+                    install-dir)))
           (message cmd)
           (lsp--info "Building software...")
           (call-process-shell-command cmd
@@ -201,17 +200,6 @@ provide a relative directory containing the Makefile."
          (lsp-guile))
         (t (error (format "Implementation not supported: %s"
                           lsp-scheme-implementation)))))
-
-(defun lsp-scheme--install-lsp-server-spawn (target-dir)
-  "Copy script lsp-server-connect.sh to TARGET-DIR."
-  (let* ((source-path
-          (locate-file "scripts/lsp-server-connect.sh" load-path))
-         (target-path (concat user-emacs-directory
-                              target-dir
-                              "lsp-server-connect.sh")))
-    (lsp--info "Copying %s to %s..." source-path target-path)
-    (copy-file source-path target-path)))
-
 
 (defun lsp-scheme--restart-buffers ()
   "Restart `lsp-scheme` buffers."

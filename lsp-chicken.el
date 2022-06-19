@@ -32,21 +32,21 @@
 (require 'seq)
 
 ;;; Code:
-(defvar lsp-chicken--target-dir
-  "lsp-chicken-server/")
+(defvar lsp-chicken--install-dir
+  (f-join lsp-server-install-dir "lsp-chicken-server/"))
 
-(defun lsp-chicken--install-egg (egg-name target-name error-callback)
-  "Ensure EGG-NAME is installed at provided TARGET-NAME.
+(defun lsp-chicken--install-egg (egg-name install-dir error-callback)
+  "Ensure EGG-NAME is installed at provided INSTALL-DIR.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its ERROR-CALLBACK in case something is wrong"
   (condition-case err
-      (let ((target-dir (concat user-emacs-directory target-name)))
+      (progn
         (lsp--info (format "Installing software and its dependencies..."))
         (call-process-shell-command
          (format
           "CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install %s"
-          (expand-file-name target-dir)
-          (expand-file-name target-dir)
+          install-dir
+          install-dir
           egg-name)
          nil
          "*Shell Command Output*"
@@ -67,10 +67,10 @@ This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 _CLIENT and _UPDATE? are ignored."
   (condition-case err
-      (progn (when (f-exists? lsp-chicken--target-dir)
-               (f-delete lsp-chicken--target-dir t))
+      (progn (when (f-exists? lsp-chicken--install-dir)
+               (f-delete lsp-chicken--install-dir t))
              (lsp-chicken--install-egg "lsp-server"
-                                       lsp-chicken--target-dir
+                                       lsp-chicken--install-dir
                                        error-callback)
              (lsp-scheme)
              (run-with-timer 0.0
@@ -83,8 +83,7 @@ _CLIENT and _UPDATE? are ignored."
   "Set environment variables nedded to run local install."
   (setenv "CHICKEN_REPOSITORY_PATH"
           (concat
-           (expand-file-name
-            (concat user-emacs-directory lsp-chicken--target-dir))
+           lsp-chicken--install-dir
            ":"
            (shell-command-to-string
             "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'"))))
@@ -93,8 +92,7 @@ _CLIENT and _UPDATE? are ignored."
 (defun lsp-chicken ()
   "Setup and start CHICKEN's LSP server."
   (add-to-list 'load-path
-               (concat user-emacs-directory
-                       lsp-chicken--target-dir))
+               lsp-chicken--install-dir)
 
   (lsp-chicken--setup-environment)
   (let ((client (gethash 'lsp-chicken-server lsp-clients)))
