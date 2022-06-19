@@ -32,11 +32,6 @@
 (require 'lsp-scheme)
 
 ;;; Code:
-(defcustom lsp-guile-start-command
-  "guile --r7rs"
-  "Command to start guile's interpreter."
-  :group 'lsp-guile
-  :type 'string)
 
 (defvar lsp-guile--target-dir
   "lsp-guile-server/")

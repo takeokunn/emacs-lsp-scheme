@@ -36,7 +36,7 @@
 (require 'comint)
 (require 'cmuscheme)
 
-(defgroup lsp-scheme-lsp-server nil
+(defgroup lsp-scheme nil
   "LSP support for Scheme, using scheme-lsp-server"
   :group 'lsp-mode
   :link '(url-link "https://gitlab.com/rgherdt/scheme-lsp-server"))
