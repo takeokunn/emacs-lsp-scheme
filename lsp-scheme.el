@@ -41,6 +41,14 @@
   :group 'lsp-mode
   :link '(url-link "https://gitlab.com/rgherdt/scheme-lsp-server"))
 
+(defcustom lsp-scheme-install-dir (expand-file-name
+                                   (locate-user-emacs-file (f-join ".cache" "lsp-scheme")))
+  "Directory in which the scheme LSP servers will be installed."
+  :risky t
+  :type 'directory
+  :package-version '(lsp-scheme . "0.0.1")
+  :group 'lsp-scheme)
+
 (defcustom lsp-scheme-implementation "guile"
   "Scheme implementation to be used.  Supported options: guile, chicken."
   :type 'string

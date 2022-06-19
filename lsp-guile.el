@@ -34,7 +34,7 @@
 ;;; Code:
 
 (defvar lsp-guile--install-dir
-  (f-join lsp-server-install-dir "lsp-guile-server/"))
+  (f-join lsp-scheme-install-dir "lsp-guile-server/"))
 
 (defun lsp-guile--ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed and running.
