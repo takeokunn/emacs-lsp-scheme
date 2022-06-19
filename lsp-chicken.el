@@ -41,6 +41,7 @@ This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its ERROR-CALLBACK in case something is wrong"
   (condition-case err
       (progn
+        (f-delete install-dir t)
         (lsp--info (format "Installing software and its dependencies..."))
         (call-process-shell-command
          (format
@@ -65,7 +66,9 @@ and thus calls its ERROR-CALLBACK in case something is wrong"
   "Ensure LSP Server for Chicken is installed and running.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
-_CLIENT and _UPDATE? are ignored."
+If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
+ignored"
+  (ignore _client _update?)
   (condition-case err
       (progn (when (f-exists? lsp-chicken--install-dir)
                (f-delete lsp-chicken--install-dir t))

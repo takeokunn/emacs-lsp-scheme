@@ -40,13 +40,16 @@
   "Ensure LSP Server for Guile is installed and running.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
-_CLIENT and _UPDATE? are ignored."
+If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
+ignored."
+  (ignore _client _update?)
   (condition-case err
-      (progn (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
-                                          lsp-guile--install-dir
-                                          "scheme-json-rpc"
-                                          error-callback
-                                          "/guile/")
+      (progn (f-delete lsp-guile--install-dir t)
+             (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
+                                             lsp-guile--install-dir
+                                             "scheme-json-rpc"
+                                             error-callback
+                                             "/guile/")
              (lsp-scheme--install-tarball lsp-scheme-server-url
                                           lsp-guile--install-dir
                                           "scheme-lsp-server"
