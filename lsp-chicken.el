@@ -68,7 +68,6 @@ This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
 ignored"
-  (ignore _client _update?)
   (condition-case err
       (progn (when (f-exists? lsp-chicken--install-dir)
                (f-delete lsp-chicken--install-dir t))

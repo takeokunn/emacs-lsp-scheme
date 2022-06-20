@@ -26,7 +26,7 @@
 ;; LSP support for Guile.
 
 ;;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
-;;; Version: 0.0.2
+;;; Package-Version: 0.0.2
 
 (require 'lsp)
 (require 'lsp-scheme)
@@ -36,30 +36,55 @@
 (defvar lsp-guile--install-dir
   (f-join lsp-server-install-dir "lsp-guile-server/"))
 
+(defun lsp-guile--make-install (decompressed-path)
+  "Install automake based project at DECOMPRESSED-PATH."
+  (let ((cmd (format
+              "cd %s && ./configure --prefix=%s && make && make install && cd -"
+              decompressed-path
+              (f-join lsp-guile--install-dir))))
+    (message cmd)
+    (lsp--info "Building software...")
+    (call-process-shell-command cmd
+                                nil
+                                "*Shell command output*"
+                                t)))
+
 (defun lsp-guile--ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed and running.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
 ignored."
-  (ignore _client _update?)
   (condition-case err
-      (progn (f-delete lsp-guile--install-dir t)
-             (lsp-scheme--install-tarball lsp-scheme--json-rpc-url
-                                             lsp-guile--install-dir
-                                             "scheme-json-rpc"
-                                             error-callback
-                                             "/guile/")
-             (lsp-scheme--install-tarball lsp-scheme-server-url
-                                          lsp-guile--install-dir
-                                          "scheme-lsp-server"
-                                          error-callback
-                                          "/guile/")
-             (lsp-scheme)
-             (run-with-timer 0.0
-                             nil
-                             #'lsp-scheme--restart-buffers)
-             (funcall callback))
+      (let ((tmp-dir (make-temp-file "lsp-scheme-install" t)))
+        (f-delete lsp-guile--install-dir t)
+        (mkdir lsp-guile--install-dir t)
+
+        (lsp-download-install
+         (lambda ()
+           (lsp-guile--make-install
+            (f-join tmp-dir
+                    "scheme-json-rpc"
+                    "guile"))
+           (lsp-download-install
+            (lambda ()
+              (lsp-guile--make-install
+               (f-join tmp-dir
+                       "scheme-lsp-server"
+                       "guile"))
+              (lsp-scheme)
+              (run-with-timer 0.0
+                              nil
+                              #'lsp-scheme--restart-buffers)
+              (funcall callback))
+                                 error-callback
+                                 :url lsp-scheme-server-url
+                                 :decompress :zip
+                                 :store-path (f-join tmp-dir "scheme-lsp-server")))
+                              error-callback
+                              :url lsp-scheme--json-rpc-url
+                              :decompress :zip
+                              :store-path (f-join tmp-dir "scheme-json-rpc")))
     (error (funcall error-callback err))))
 
 (defun lsp-guile--server-installed-p ()

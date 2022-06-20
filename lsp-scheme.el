@@ -24,7 +24,7 @@
 ;; Package-Requires: ((emacs "25.1") (dash "2.18.0") (f "0.20.0") (ht "2.3") (spinner "1.7.3") (markdown-mode "2.3") (lv "0.1.0"))
 
 ;;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
-;;; Version: 0.0.2
+;;; Package-Version: 0.0.2
 
 ;;; Commentary:
 
@@ -37,7 +37,7 @@
 (require 'cmuscheme)
 
 (defgroup lsp-scheme nil
-  "LSP support for Scheme, using scheme-lsp-server"
+  "LSP support for Scheme, using scheme-lsp-server."
   :group 'lsp-mode
   :link '(url-link "https://gitlab.com/rgherdt/scheme-lsp-server"))
 
@@ -84,12 +84,12 @@ In case this port is used, the client will try subsequent ports."
   "Version of LSP Server implementation used.")
 
 (defvar lsp-scheme--json-rpc-url
-  (format "https://codeberg.org/rgherdt/scheme-json-rpc/archive/%s.tar.gz"
+  (format "https://codeberg.org/rgherdt/scheme-json-rpc/archive/%s.zip"
           lsp-scheme--json-rpc-version)
   "Path to JSON-RPC library.")
 
 (defcustom lsp-scheme-server-url
-  (format "https://codeberg.org/rgherdt/scheme-lsp-server/archive/%s.tar.gz"
+  (format "https://codeberg.org/rgherdt/scheme-lsp-server/archive/%s.zip"
           lsp-scheme--lsp-server-version)
   "Path to Scheme's LSP server."
   :type 'string
@@ -131,50 +131,6 @@ Uses command defined in `lsp-scheme-untar-script'."
    nil
    "*Shell Command Output*"
    t))
-
-(defun lsp-scheme--install-tarball
-    (url install-dir project-name error-callback &optional subdir)
-  "Ensure tarball at URL is installed at provided INSTALL-DIR.
-This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
-and thus calls its ERROR-CALLBACK in case something is wrong.  PROJECT-NAME
-should match the name of the uncompressed tarball.  In case the installer is not
-present in the root directory of the uncompressed tarball, SUBDIR can be used to
-provide a relative directory containing the Makefile."
-  (condition-case err
-      (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
-             (tarball-name (file-name-nondirectory url))
-             (download-path (concat tmp-dir "/"  project-name "-" tarball-name))
-             (decompressed-path
-              (concat tmp-dir "/"
-                      project-name
-                      (if subdir
-                          (concat "/" subdir)
-                        "/"))))
-        (when (f-exists? download-path)
-          (f-delete download-path))
-        (lsp--info "Starting to download %s to %s..." url download-path)
-        (url-copy-file url download-path)
-        (lsp--info "Finished downloading %s..." download-path)
-        (lsp--info "Uncompressing file %s into %s..."
-                   download-path
-                   tmp-dir)
-        (lsp-scheme--untar download-path tmp-dir)
-        (lsp--info "Switching to installation directory %s..."
-                   decompressed-path)
-        (lsp--info "Building software...")
-        (let ((cmd (format
-                    "cd %s && ./configure --prefix=%s && make && make install && cd -"
-                    decompressed-path
-                    install-dir)))
-          (message cmd)
-          (lsp--info "Building software...")
-          (call-process-shell-command cmd
-                                      nil
-                                      "*Shell command output*"
-                                      t))
-
-        (lsp--info "Installation finished."))
-    (error (funcall error-callback err))))
 
 (defun lsp-scheme--select-start-command (implementation)
   "Select a command to launch an interpreter for the selected IMPLEMENTATION."
@@ -226,7 +182,7 @@ in the same instance, which spwans LSP servers for each incoming connection."
                        "localhost"
                        lsp-scheme-spawner-port)))
         (setq lsp-scheme-spawner-port port-num)
-        (apply 'make-comint "lsp-scheme"
+        (apply #'make-comint "lsp-scheme"
                (car cmdlist)
                nil
                (cdr cmdlist))
