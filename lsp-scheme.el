@@ -102,7 +102,7 @@ In case this port is used, the client will try subsequent ports."
 (defvar lsp-scheme--chicken-install-dir
   (f-join lsp-server-install-dir "lsp-chicken-server/"))
 
-(defun lsp-scheme--chicken-install-egg (egg-name install-dir error-callback)
+(defun lsp-scheme--chicken-install-egg (egg-name install-dir callback error-callback)
   "Ensure EGG-NAME is installed at provided INSTALL-DIR.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
 and thus calls its ERROR-CALLBACK in case something is wrong"
@@ -119,7 +119,8 @@ and thus calls its ERROR-CALLBACK in case something is wrong"
          nil
          "*Shell Command Output*"
          t)
-        (lsp--info "Installation finished."))
+        (lsp--info "Installation finished.")
+        (funcall callback))
     (error (funcall error-callback err))))
 
 (defun lsp-scheme--ensure-chicken-server
@@ -130,16 +131,18 @@ and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
 ignored"
   (condition-case err
-      (progn (when (f-exists? lsp-scheme--chicken-install-dir)
-               (f-delete lsp-scheme--chicken-install-dir t))
-             (lsp-scheme--chicken-install-egg "lsp-server"
-                                              lsp-scheme--chicken-install-dir
-                                              error-callback)
-             (lsp-scheme)
-             (run-with-timer 0.0
-                             nil
-                             #'lsp-scheme--restart-buffers)
-             (funcall callback))
+      (progn
+        (when (f-exists? lsp-scheme--chicken-install-dir)
+          (f-delete lsp-scheme--chicken-install-dir t))
+        (lsp-scheme--chicken-install-egg "lsp-server"
+                                         lsp-scheme--chicken-install-dir
+                                         (lambda ()
+                                           (lsp-scheme)
+                                           (run-with-timer 0.0
+                                                           nil
+                                                           #'lsp-scheme--restart-buffers)
+                                           (funcall callback))
+                                         error-callback))
     (error (funcall error-callback err))))
 
 (defun lsp-scheme--chicken-setup-environment ()
@@ -150,6 +153,10 @@ ignored"
            ":"
            (shell-command-to-string
             "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'"))))
+
+(defun lsp-scheme--chicken-server-installed-p ()
+  "Check if LSP server for chicken is installed."
+  (lsp-scheme--server-installed-p "chicken-lsp-server"))
 
 ;;;###autoload
 (defun lsp-scheme-chicken ()
@@ -188,22 +195,26 @@ ignored."
            (lsp-scheme--make-install
             (f-join tmp-dir
                     "scheme-json-rpc"
-                    "guile"))
-           (lsp-download-install
+                    "guile")
             (lambda ()
-              (lsp-scheme--make-install
-               (f-join tmp-dir
-                       "scheme-lsp-server"
-                       "guile"))
-              (lsp-scheme)
-              (run-with-timer 0.0
-                              nil
-                              #'lsp-scheme--restart-buffers)
-              (funcall callback))
-            error-callback
-            :url lsp-scheme-server-url
-            :decompress :zip
-            :store-path (f-join tmp-dir "scheme-lsp-server")))
+              (lsp-download-install
+               (lambda ()
+                 (lsp-scheme--make-install
+                  (f-join tmp-dir
+                          "scheme-lsp-server"
+                          "guile")
+                  (lambda ()
+                    (lsp-scheme)
+                    (run-with-timer 0.0
+                                    nil
+                                    #'lsp-scheme--restart-buffers)
+                    (funcall callback))
+                  error-callback))
+               error-callback
+               :url lsp-scheme-server-url
+               :decompress :zip
+               :store-path (f-join tmp-dir "scheme-lsp-server")))
+            error-callback))
          error-callback
          :url lsp-scheme-json-rpc-url
          :decompress :zip
@@ -227,6 +238,10 @@ ignored."
                    "share/guile/3.0/:")
            (getenv "GUILE_LOAD_PATH"))))
 
+(defun lsp-scheme--guile-server-installed-p ()
+  "Check if LSP server for Guile is installed."
+  (lsp-scheme--server-installed-p "guile-lsp-server"))
+
 ;;;###autoload
 (defun lsp-scheme-guile ()
   "Setup and start Guile's LSP server."
@@ -238,19 +253,18 @@ ignored."
 
 ;;;; Common functions
 
-(defun lsp-scheme--server-installed-p (server-id)
-  "Check if LSP server with SERVER-ID is installed."
-  (let ((server-name (prin1-to-string server-id)))
-    (lambda ()
-      (or (executable-find server-name)
-          (locate-file server-name load-path)
-          (locate-file (f-join "bin" server-name) load-path)))))
+(defun lsp-scheme--server-installed-p (server-name)
+  "Check if LSP server SERVER-NAME is installed."
+  (or (executable-find server-name)
+      (locate-file server-name load-path)
+      (locate-file (f-join "bin" server-name) load-path)))
 
 (defun lsp-scheme--connect ()
   "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
  `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (list (locate-file "lsp-server-connect.sh" load-path)
+  (list (or (locate-file "lsp-server-connect.sh" load-path)
+            (locate-file (f-join "scripts" "lsp-server-connect.sh") load-path))
         (format "%d" lsp-scheme-spawner-port)))
 
 (defun lsp-scheme--select-start-command (implementation)
@@ -313,18 +327,24 @@ in the same instance, which spwans LSP servers for each incoming connection."
     (or (display-buffer-reuse-window (get-buffer "*lsp-scheme*") '())
         (display-buffer "*lsp-scheme*" '(display-buffer-pop-up-window)))))
 
-(defun lsp-scheme--make-install (decompressed-path)
-  "Install automake based project at DECOMPRESSED-PATH."
+(defun lsp-scheme--make-install (decompressed-path callback error-callback)
+  "Install automake based project at DECOMPRESSED-PATH.
+The caller shall provide a CALLBACK to execute after finishing installing
+the tarball, and an ERROR-CALLBACK to be called in case of an error."
   (let ((cmd (format
               "cd %s && ./configure --prefix=%s && make && make install && cd -"
               decompressed-path
               (f-join lsp-scheme--guile-install-dir))))
     (message cmd)
     (lsp--info "Building software...")
-    (call-process-shell-command cmd
-                                nil
-                                "*Shell command output*"
-                                t)))
+    (let ((res (call-process-shell-command cmd
+                                           nil
+                                           "*Shell command output*"
+                                           t)))
+      (if (= res 0)
+          (funcall callback)
+        (funcall error-callback
+                 (format "Error building %s" decompressed-path))))))
 
 ;;;###autoload
 (defun lsp-scheme ()
@@ -341,7 +361,7 @@ in the same instance, which spwans LSP servers for each incoming connection."
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-stdio-connection
                                    #'lsp-scheme--connect
-                                   (lsp-scheme--server-installed-p 'lsp-chicken-server))
+                                   #'lsp-scheme--chicken-server-installed-p)
                   :major-modes '(scheme-mode)
                   :priority 1
                   :server-id 'lsp-chicken-server
@@ -350,7 +370,7 @@ in the same instance, which spwans LSP servers for each incoming connection."
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-stdio-connection
                                    #'lsp-scheme--connect
-                                   (lsp-scheme--server-installed-p 'lsp-chicken-server))
+                                   #'lsp-scheme--guile-server-installed-p)
                   :major-modes '(scheme-mode)
                   :priority 1
                   :server-id 'lsp-guile-server
