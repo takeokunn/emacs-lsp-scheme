@@ -177,7 +177,7 @@ ignored"
         (lsp-scheme--chicken-install-egg "lsp-server"
                                          lsp-scheme--chicken-install-dir
                                          (lambda ()
-                                           (lsp-scheme)
+                                           (lsp-scheme-chicken)
                                            (run-with-timer 0.0
                                                            nil
                                                            #'lsp-scheme--restart-buffers)
@@ -246,7 +246,7 @@ ignored."
                           "scheme-lsp-server"
                           "guile")
                   (lambda ()
-                    (lsp-scheme)
+                    (lsp-scheme-guile)
                     (run-with-timer 0.0
                                     nil
                                     #'lsp-scheme--restart-buffers)
