@@ -45,7 +45,7 @@
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "d35e00d2cbf6155601de7b22754424c8531be2b8"
+  "0.0.5"
   "Version of LSP Server implementation used.")
 
 ;;;; General Customization
@@ -156,7 +156,9 @@ ignored"
 
 (defun lsp-scheme--chicken-server-installed-p ()
   "Check if LSP server for chicken is installed."
-  (lsp-scheme--server-installed-p "chicken-lsp-server"))
+  (lsp-scheme--chicken-setup-environment)
+  (lsp-scheme--accepted-installed-server-p "chicken-lsp-server"
+                                           lsp-scheme--chicken-install-dir))
 
 ;;;###autoload
 (defun lsp-scheme-chicken ()
@@ -240,11 +242,14 @@ ignored."
 
 (defun lsp-scheme--guile-server-installed-p ()
   "Check if LSP server for Guile is installed."
-  (lsp-scheme--server-installed-p "guile-lsp-server"))
+  (lsp-scheme--accepted-installed-server-p "guile-lsp-server"
+                                           lsp-scheme--guile-install-dir))
 
 ;;;###autoload
 (defun lsp-scheme-guile ()
   "Setup and start Guile's LSP server."
+  (add-to-list 'load-path
+               lsp-scheme--guile-install-dir)
   (lsp-scheme--guile-setup-environment)
   (let ((client (gethash 'lsp-guile-server lsp-clients)))
     (when (and client (lsp--server-binary-present? client))
@@ -258,6 +263,34 @@ ignored."
   (or (executable-find server-name)
       (locate-file server-name load-path)
       (locate-file (f-join "bin" server-name) load-path)))
+
+(defun lsp-scheme--get-version-from-string (str)
+  "Get LSP server version number out of multi-line STR.
+Used to extract version from output of <>-lsp-server --version."
+  (let* ((lines (split-string str "\n"))
+         (version-line (seq-find (lambda (line)
+                                   (string-prefix-p "Version " line))
+                                 lines)))
+    (replace-regexp-in-string "\\(Version \\)" "" version-line)))
+
+(defun lsp-scheme--accepted-installed-server-p (server-name &rest extra-paths)
+  "Check if LSP server SERVER-NAME with correct version is installed.
+The caller may provide EXTRA-PATHS to search for."
+  (let ((bin-path (or (executable-find server-name)
+                      (locate-file server-name load-path)
+                      (locate-file (f-join "bin" server-name) load-path)
+                      (locate-file server-name extra-paths)
+                      (locate-file (f-join "bin" server-name) extra-paths))))
+    (if (not bin-path)
+        nil
+      (let ((res (shell-command-to-string (format "%s %s" bin-path "--version"))))
+        (if (not res)
+            nil
+          (let ((installed-version (lsp-scheme--get-version-from-string res)))
+            (or (string-equal installed-version
+                              lsp-scheme--lsp-server-version)
+                (string-greaterp installed-version
+                                 lsp-scheme--lsp-server-version))))))))
 
 (defun lsp-scheme--connect ()
   "Return list containing a command to run and its arguments based on PORT.
@@ -334,7 +367,7 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
   (let ((cmd (format
               "cd %s && ./configure --prefix=%s && make && make install && cd -"
               decompressed-path
-              (f-join lsp-scheme--guile-install-dir))))
+              lsp-scheme--guile-install-dir)))
     (message cmd)
     (lsp--info "Building software...")
     (let ((res (call-process-shell-command cmd
