@@ -105,7 +105,8 @@ In case this port is used, the client will try subsequent ports."
 (defun lsp-scheme--chicken-install-egg (egg-name install-dir callback error-callback)
   "Ensure EGG-NAME is installed at provided INSTALL-DIR.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
-and thus calls its ERROR-CALLBACK in case something is wrong"
+and thus calls its CALLBACK after completing, or ERROR-CALLBACK in case
+something is wrong."
   (condition-case err
       (progn
         (f-delete install-dir t)
@@ -386,8 +387,8 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
          (lsp-scheme-chicken))
         ((equal lsp-scheme-implementation "guile")
          (lsp-scheme-guile))
-        (t (error (format "Implementation not supported: %s"
-                          lsp-scheme-implementation)))))
+        (t (error "Implementation not supported: %s"
+                  lsp-scheme-implementation))))
 
 ;;;; Register clients
 
