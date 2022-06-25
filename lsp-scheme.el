@@ -55,9 +55,8 @@
 ;;Add the following lines to your Emacs configuration file:
 
 ;;   (require lsp-scheme)
-;;   (add-hook 'scheme-mode-hook #'lsp)
 ;;   (add-hook 'scheme-mode-hook #'lsp-scheme)
-;;   (setq lsp-scheme-implementation "guile") ;;; also customizable
+;;   (setq lsp-scheme-implementation "guile") ;;; customizable
 
 
 ;;;; Usage
