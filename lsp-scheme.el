@@ -163,7 +163,7 @@ something is wrong."
         (funcall callback))
     (error (funcall error-callback err))))
 
-(defun lsp-scheme--ensure-chicken-server
+(defun lsp-scheme--chicken-ensure-server
     (_client callback error-callback _update?)
   "Ensure LSP Server for Chicken is installed and running.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
@@ -423,31 +423,40 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
 (defun lsp-scheme ()
   "Setup and start Scheme's LSP server."
   (cond ((equal lsp-scheme-implementation "chicken")
+         (unless (gethash 'lsp-chicken-server lsp-clients)
+           (lsp-scheme--chicken-register-client))
          (lsp-scheme-chicken))
         ((equal lsp-scheme-implementation "guile")
+         (unless (gethash 'lsp-guile-server lsp-clients)
+           (lsp-scheme--guile-register-client))
          (lsp-scheme-guile))
         (t (error "Implementation not supported: %s"
-                  lsp-scheme-implementation))))
+                  lsp-scheme-implementation)))
+  (lsp))
 
 ;;;; Register clients
 
-(lsp-register-client
- (make-lsp-client :new-connection (lsp-stdio-connection
-                                   #'lsp-scheme--connect
-                                   #'lsp-scheme--chicken-server-installed-p)
-                  :major-modes '(scheme-mode)
-                  :priority 1
-                  :server-id 'lsp-chicken-server
-                  :download-server-fn #'lsp-scheme--ensure-chicken-server))
+(defun lsp-scheme--chicken-register-client ()
+  "Register CHICKEN LSP client."
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection
+                                     #'lsp-scheme--connect
+                                     #'lsp-scheme--chicken-server-installed-p)
+                    :major-modes '(scheme-mode)
+                    :priority 1
+                    :server-id 'lsp-chicken-server
+                    :download-server-fn #'lsp-scheme--chicken-ensure-server)))
 
-(lsp-register-client
- (make-lsp-client :new-connection (lsp-stdio-connection
-                                   #'lsp-scheme--connect
-                                   #'lsp-scheme--guile-server-installed-p)
-                  :major-modes '(scheme-mode)
-                  :priority 1
-                  :server-id 'lsp-guile-server
-                  :download-server-fn #'lsp-scheme--guile-ensure-server))
+(defun lsp-scheme--guile-register-client ()
+  "Register Guile LSP client."
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection
+                                     #'lsp-scheme--connect
+                                     #'lsp-scheme--guile-server-installed-p)
+                    :major-modes '(scheme-mode)
+                    :priority 1
+                    :server-id 'lsp-guile-server
+                    :download-server-fn #'lsp-scheme--guile-ensure-server)))
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
