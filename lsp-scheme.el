@@ -21,7 +21,7 @@
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
 ;; Version: 0.0.2
-;; Package-Requires: ((emacs "25.1") (lsp-mode "8.0.0"))
+;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
 
