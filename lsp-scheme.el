@@ -30,8 +30,9 @@
 
 ;;;; Installation
 
-;;Make sure your favorite Scheme implementation is installed and on your
-;;load-path.
+;;Make sure your chosen Scheme implementation is installed and on your
+;;load-path.  Implementation support depends on availability of a corresponding
+;;LSP server, as mentioned, for now only CHICKEN and Guile are supported.
 
 ;;On first run you should be prompted to install an lsp server.  The
 ;;extension will install it to its cache directory.
