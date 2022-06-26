@@ -1,9 +1,11 @@
 ;;; lsp-scheme.el --- Scheme support for lsp-mode    -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2022 Ricardo Gabriel Herdt
+;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
+;; Keywords: languages, lisp, tools
+;; Version: 0.0.2
+;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
-;; Author: Ricardo Gabriel Herdt
-;; Keywords: languages
+;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,17 +20,13 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
-;; Keywords: languages, lisp, tools
-;; Version: 0.0.2
-;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
-
 ;; URL: https://codeberg.org/rgherdt/emacs-lsp-scheme
-
 
 ;;; Commentary:
 
 ;; Client for the Scheme LSP server.
+;; Currently this client only supports CHICKEN 5 and Guile 3, since
+;; those are supported by scheme-lsp-server.
 
 ;;;; Installation
 
@@ -345,7 +343,7 @@ The command requests from a running command server (started with
          lsp-scheme-chicken-start-command)
         ((string-equal implementation "guile")
          lsp-scheme-guile-start-command)
-        (t (error "Implementation not supported: %s" implementation))))
+        (t (user-error "Implementation not supported: %s" implementation))))
 
 (defun lsp-scheme--restart-buffers ()
   "Restart `lsp-scheme` buffers."
@@ -363,7 +361,7 @@ The command requests from a running command server (started with
 (defun lsp-scheme--run (implementation)
   "Start the selected Scheme IMPLEMENTATION.
 A REPL is opened in an *lsp-scheme* buffer, and a spawner server is launched
-in the same instance, which spwans LSP servers for each incoming connection."
+in the same instance, which spawns LSP servers for each incoming connection."
   (interactive "sScheme implementation: \n")
   (let ((cmd (lsp-scheme--select-start-command implementation)))
     (when (not (comint-check-proc "*lsp-scheme*"))
@@ -429,7 +427,7 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
          (unless (gethash 'lsp-guile-server lsp-clients)
            (lsp-scheme--guile-register-client))
          (lsp-scheme-guile))
-        (t (error "Implementation not supported: %s"
+        (t (user-error "Implementation not supported: %s"
                   lsp-scheme-implementation)))
   (lsp))
 
