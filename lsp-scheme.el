@@ -183,6 +183,18 @@ ignored"
   (lsp-scheme--accepted-installed-server-p "chicken-lsp-server"
                                            lsp-scheme--chicken-install-dir))
 
+(defun lsp-scheme--chicken-start ()
+  "Return list containing a command to run and its arguments based on PORT.
+The command requests from a running command server (started with
+ `lsp-scheme--run') an LSP server for the current scheme buffer."
+  (add-to-list 'load-path
+               lsp-scheme--chicken-install-dir)
+
+  (list (or (locate-file "chicken-lsp-server" load-path)
+            (locate-file (f-join "bin" "chicken-lsp-server") load-path))
+        "--log-level"
+        lsp-scheme-log-level))
+
 ;;;###autoload
 (defun lsp-scheme-chicken ()
   "Register CHICKEN's LSP server if needed."
@@ -259,6 +271,15 @@ ignored."
   (lsp-scheme--accepted-installed-server-p "guile-lsp-server"
                                            lsp-scheme--guile-install-dir))
 
+(defun lsp-scheme--guile-start ()
+  "Return list containing a command to run and its arguments based on PORT.
+The command requests from a running command server (started with
+ `lsp-scheme--run') an LSP server for the current scheme buffer."
+  (list (or (locate-file "guile-lsp-server" load-path)
+            (locate-file (f-join "bin" "guile-lsp-server") load-path))
+        "--log-level"
+        lsp-scheme-log-level))
+
 ;;;###autoload
 (defun lsp-scheme-guile ()
   "Regist Guile's LSP server if needed."
@@ -295,40 +316,6 @@ The caller may provide EXTRA-PATHS to search for."
                               lsp-scheme--lsp-server-version)
                 (string-greaterp installed-version
                                  lsp-scheme--lsp-server-version))))))))
-
-(defun lsp-scheme--chicken-start ()
-  "Return list containing a command to run and its arguments based on PORT.
-The command requests from a running command server (started with
- `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (add-to-list 'load-path
-               lsp-scheme--chicken-install-dir)
-
-  (list (or (locate-file "chicken-lsp-server" load-path)
-            (locate-file (f-join "bin" "chicken-lsp-server") load-path))
-        "--log-level"
-        lsp-scheme-log-level))
-
-(defun lsp-scheme--guile-start ()
-  "Return list containing a command to run and its arguments based on PORT.
-The command requests from a running command server (started with
- `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (list (or (locate-file "guile-lsp-server" load-path)
-            (locate-file (f-join "bin" "guile-lsp-server") load-path))
-        "--log-level"
-        lsp-scheme-log-level))
-
-(defun lsp-scheme--restart-buffers ()
-  "Restart `lsp-scheme` buffers."
-  (let* ((buffers (buffer-list))
-         (scheme-buffers
-          (seq-filter
-           (lambda (b)
-             (eq (buffer-local-value 'major-mode b)
-                 'scheme-mode))
-           buffers)))
-    (dolist (b scheme-buffers)
-      (with-current-buffer b
-        (revert-buffer nil t)))))
 
 (defun lsp-scheme--make-install (decompressed-path callback error-callback)
   "Install automake based project at DECOMPRESSED-PATH.
