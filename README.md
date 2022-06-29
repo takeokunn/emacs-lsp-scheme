@@ -47,12 +47,6 @@ Add the following lines to your Emacs configuration file:
 (setq lsp-scheme-implementation "guile") ;;; also customizable
 ```
 
-Alternatively you can add the specific command as hook, for example:
-```
-   (add-hook 'scheme-mode-hook #'lsp-scheme-guile)
-```
-In this case lsp-scheme-implementation is ignored.
-
 
 This should in the first run automatically install the corresponding LSP server
 and start the client. In case you have trouble, you can manually install the
