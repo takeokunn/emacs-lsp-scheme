@@ -198,12 +198,17 @@ The command requests from a running command server (started with
 ;;;###autoload
 (defun lsp-scheme-chicken ()
   "Register CHICKEN's LSP server if needed."
-  (lsp-scheme--initialize)
   (unless (gethash 'lsp-chicken-server lsp-clients)
     (lsp-scheme--chicken-register-client))
   (lsp))
 
 ;;;; Guile
+(defcustom lsp-scheme-guile-start-command
+  "guile --r7rs"
+  "Command to start guile's interpreter."
+  :group 'lsp-scheme
+  :type 'string)
+
 (defvar lsp-scheme--guile-install-dir
   (f-join lsp-server-install-dir "lsp-guile-server/"))
 
@@ -278,7 +283,6 @@ The command requests from a running command server (started with
 ;;;###autoload
 (defun lsp-scheme-guile ()
   "Regist Guile's LSP server if needed."
-  (lsp-scheme--initialize)
   (unless (gethash 'lsp-guile-server lsp-clients)
     (lsp-scheme--guile-register-client))
   (lsp))
@@ -332,15 +336,6 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
         (funcall error-callback
                  (format "Error building %s" decompressed-path))))))
 
-(defun lsp-scheme--initialize ()
-  "Initialize extension (setup 'load-path' and environment)."
-  (add-to-list 'load-path
-               lsp-scheme--chicken-install-dir)
-  (add-to-list 'load-path
-               lsp-scheme--guile-install-dir)
-  (lsp-scheme--guile-setup-environment)
-  (lsp-scheme--chicken-setup-environment))
-
 ;;;###autoload
 (defun lsp-scheme ()
   "Setup and start Scheme's LSP server."
@@ -349,7 +344,7 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
         ((equal lsp-scheme-implementation "guile")
          (lsp-scheme-guile))
         (t (user-error "Implementation not supported: %s"
-                       lsp-scheme-implementation))))
+                  lsp-scheme-implementation))))
 
 ;;;; Register clients
 
@@ -375,7 +370,12 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                     :server-id 'lsp-guile-server
                     :download-server-fn #'lsp-scheme--guile-ensure-server)))
 
-
+(add-to-list 'load-path
+             lsp-scheme--chicken-install-dir)
+(add-to-list 'load-path
+               lsp-scheme--guile-install-dir)
+(eval-after-load 'lsp-scheme (lsp-scheme--guile-setup-environment))
+(eval-after-load 'lsp-scheme (lsp-scheme--chicken-setup-environment))
 
 (push '(scheme-mode . "scheme")
       lsp-language-id-configuration)
