@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.1.1
+;; Version: 0.2.0
 ;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -87,7 +87,7 @@
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "0.0.6"
+  "0.1.0"
   "Version of LSP Server implementation used.")
 
 ;;;; General Customization
@@ -124,6 +124,13 @@
   :type 'string
   :group 'lsp-scheme
   :package-version '(lsp-scheme . "0.0.1"))
+
+(defcustom lsp-scheme-repl-port
+  36821
+  "Port to open a REPL in the running LSP server."
+  :type 'integer
+  :group 'lsp-scheme
+  :package-version '(lsp-scheme . "0.2.0"))
 
 ;;;; CHICKEN
 (defvar lsp-scheme--chicken-install-dir
@@ -169,19 +176,28 @@ ignored"
                                          error-callback))
     (error (funcall error-callback err))))
 
-(defun lsp-scheme--chicken-setup-environment ()
-  "Set environment variables nedded to run local install."
-  (setenv "CHICKEN_REPOSITORY_PATH"
-          (concat
-           lsp-scheme--chicken-install-dir
-           ":"
+(defun lsp-scheme--chicken-environment ()
+  "Setup environment for calling CHICKEN's LSP server.
+Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
+consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
+  '(("CHICKEN_REPOSITORY_PATH" .
+     (list lsp-scheme--chicken-install-dir
            (shell-command-to-string
-            "csi -e '(import (chicken platform)) (for-each (lambda (p) (display p) (display \":\")) (repository-path))'"))))
+            (concat "csi -e '(import (chicken platform)) "
+                    "(for-each (lambda (p) (display p) (display \":\")) "
+                    "   (repository-path))'"))))))
 
 (defun lsp-scheme--chicken-server-installed-p ()
   "Check if LSP server for chicken is installed."
-  (lsp-scheme--accepted-installed-server-p "chicken-lsp-server"
-                                           lsp-scheme--chicken-install-dir))
+  (lsp-scheme--accepted-installed-server-p
+   "chicken-lsp-server"
+   (format "CHICKEN_REPOSITORY_PATH=%s:%s"
+           lsp-scheme--chicken-install-dir
+           (shell-command-to-string
+            (concat "csi -e '(import (chicken platform)) "
+                    "(for-each (lambda (p) (display p) (display \":\")) "
+                    "   (repository-path))'")))
+   lsp-scheme--chicken-install-dir))
 
 (defun lsp-scheme--chicken-start ()
   "Return list containing a command to run and its arguments based on PORT.
@@ -244,27 +260,36 @@ ignored."
          :store-path (f-join tmp-dir "scheme-json-rpc")))
     (error (funcall error-callback err))))
 
-(defun lsp-scheme--guile-setup-environment ()
-  "Set environment variables nedded to run local install."
-  (add-to-list 'load-path
-               lsp-scheme--guile-install-dir)
-  (setenv "GUILE_LOAD_COMPILED_PATH"
-          (concat
-           (f-join lsp-scheme--guile-install-dir ":")
+(defun lsp-scheme--guile-environment ()
+  "Setup environment for calling Guile's LSP server.
+Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
+consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
+  '(("GUILE_LOAD_COMPILED_PATH" .
+     (list lsp-scheme--guile-install-dir
            (f-join lsp-scheme--guile-install-dir
-                   "lib/guile/3.0/site-ccache/:")
+                   "lib/guile/3.0/site-ccache/")
            (getenv "GUILE_LOAD_COMPILED_PATH")))
-  (setenv "GUILE_LOAD_PATH"
-          (concat
-           (f-join lsp-scheme--guile-install-dir ":")
+    ("GUILE_LOAD_PATH" .
+     (list lsp-scheme--guile-install-dir ":"
            (f-join lsp-scheme--guile-install-dir
-                   "share/guile/3.0/:")
-           (getenv "GUILE_LOAD_PATH"))))
+                   "share/guile/3.0/")
+           (getenv "GUILE_LOAD_PATH")))))
 
 (defun lsp-scheme--guile-server-installed-p ()
   "Check if LSP server for Guile is installed."
-  (lsp-scheme--accepted-installed-server-p "guile-lsp-server"
-                                           lsp-scheme--guile-install-dir))
+  (lsp-scheme--accepted-installed-server-p
+   "guile-lsp-server"
+   (format "GUILE_LOAD_COMPILED_PATH=%s:%s:%s GUILE_LOAD_PATH=%s:%s:%s"
+           lsp-scheme--guile-install-dir
+           (f-join lsp-scheme--guile-install-dir
+                   "lib/guile/3.0/site-ccache/")
+           (getenv "GUILE_LOAD_COMPILED_PATH")
+
+           lsp-scheme--guile-install-dir
+           (f-join lsp-scheme--guile-install-dir
+                   "share/guile/3.0/")
+           (getenv "GUILE_LOAD_PATH"))
+   lsp-scheme--guile-install-dir))
 
 (defun lsp-scheme--guile-start ()
   "Return list containing a command to run and its arguments based on PORT.
@@ -273,7 +298,9 @@ The command requests from a running command server (started with
   (list (or (locate-file "guile-lsp-server" load-path)
             (locate-file (f-join "bin" "guile-lsp-server") load-path))
         "--log-level"
-        lsp-scheme-log-level))
+        lsp-scheme-log-level
+        "--listen"
+        (format "%d" lsp-scheme-repl-port)))
 
 ;;;###autoload
 (defun lsp-scheme-guile ()
@@ -294,8 +321,9 @@ Used to extract version from output of <>-lsp-server --version."
                                  lines)))
     (replace-regexp-in-string "\\(Version \\)" "" version-line)))
 
-(defun lsp-scheme--accepted-installed-server-p (server-name &rest extra-paths)
+(defun lsp-scheme--accepted-installed-server-p (server-name env &rest extra-paths)
   "Check if LSP server SERVER-NAME with correct version is installed.
+ENV must be a string setting environment variables needed by the LSP server.
 The caller may provide EXTRA-PATHS to search for."
   (let ((bin-path (or (executable-find server-name)
                       (locate-file server-name load-path)
@@ -304,7 +332,8 @@ The caller may provide EXTRA-PATHS to search for."
                       (locate-file (f-join "bin" server-name) extra-paths))))
     (if (not bin-path)
         nil
-      (let ((res (shell-command-to-string (format "%s %s" bin-path "--version"))))
+      (let ((res (shell-command-to-string
+                  (format "%s %s %s" env bin-path "--version"))))
         (if (not res)
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
@@ -337,9 +366,7 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
   (add-to-list 'load-path
                lsp-scheme--chicken-install-dir)
   (add-to-list 'load-path
-               lsp-scheme--guile-install-dir)
-  (lsp-scheme--guile-setup-environment)
-  (lsp-scheme--chicken-setup-environment))
+               lsp-scheme--guile-install-dir))
 
 ;;;###autoload
 (defun lsp-scheme ()
@@ -360,6 +387,7 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                                      #'lsp-scheme--chicken-start
                                      #'lsp-scheme--chicken-server-installed-p)
                     :major-modes '(scheme-mode)
+                    :environment-fn #'lsp-scheme--chicken-environment
                     :priority 1
                     :server-id 'lsp-chicken-server
                     :download-server-fn #'lsp-scheme--chicken-ensure-server)))
@@ -367,13 +395,15 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
 (defun lsp-scheme--guile-register-client ()
   "Register Guile LSP client."
   (lsp-register-client
-   (make-lsp-client :new-connection (lsp-stdio-connection
-                                     #'lsp-scheme--guile-start
-                                     #'lsp-scheme--guile-server-installed-p)
-                    :major-modes '(scheme-mode)
-                    :priority 1
-                    :server-id 'lsp-guile-server
-                    :download-server-fn #'lsp-scheme--guile-ensure-server)))
+   (make-lsp-client
+    :new-connection (lsp-stdio-connection
+                     #'lsp-scheme--guile-start
+                     #'lsp-scheme--guile-server-installed-p)
+    :major-modes '(scheme-mode)
+    :environment-fn #'lsp-scheme--guile-environment
+    :priority 1
+    :server-id 'lsp-guile-server
+    :download-server-fn #'lsp-scheme--guile-ensure-server)))
 
 
 
