@@ -264,16 +264,16 @@ ignored."
   "Setup environment for calling Guile's LSP server.
 Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
 consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
-  '(("GUILE_LOAD_COMPILED_PATH" .
-     (list lsp-scheme--guile-install-dir
-           (f-join lsp-scheme--guile-install-dir
-                   "lib/guile/3.0/site-ccache/")
-           (getenv "GUILE_LOAD_COMPILED_PATH")))
+  `(("GUILE_LOAD_COMPILED_PATH" .
+     (list ,lsp-scheme--guile-install-dir
+            ,(f-join lsp-scheme--guile-install-dir
+                    "lib/guile/3.0/site-ccache/")
+            ,(or (getenv "GUILE_LOAD_COMPILED_PATH") "")))
     ("GUILE_LOAD_PATH" .
-     (list lsp-scheme--guile-install-dir ":"
-           (f-join lsp-scheme--guile-install-dir
-                   "share/guile/3.0/")
-           (getenv "GUILE_LOAD_PATH")))))
+     (list ,lsp-scheme--guile-install-dir ":"
+           ,(f-join lsp-scheme--guile-install-dir
+                    "share/guile/3.0/")
+           ,(or (getenv "GUILE_LOAD_PATH") "")))))
 
 (defun lsp-scheme--guile-server-installed-p ()
   "Check if LSP server for Guile is installed."
