@@ -1,16 +1,15 @@
 # emacs-lsp-scheme
 
-Emacs LSP client for the Scheme programming language. This is an unreleased
-work in progress.
+Emacs LSP client for the Scheme programming language.
 
 This plugin requires an Scheme LSP server in order to work. Currently it uses
-https://gitlab.com/rgherdt/scheme-lsp-server (developed by the same author), which
-is also in an early stage of development. Currently only Guile and CHICKEN are supported.
+https://gitlab.com/rgherdt/scheme-lsp-server, which is also in an early stage of
+development. Currently only Guile and CHICKEN are supported.
 
 ## Requirements
 
 Please follow the instructions specific to your chosen Scheme implementation
-before proceeding with the installation of this extensions:
+before proceeding with the installation of this extension:
 
 ### CHICKEN 5
 
@@ -30,8 +29,9 @@ All you need is to install Guile 3.
 
 ## Installing
 
-Currently this software is only available through this repository. Simply check it out 
-and add it to your load path, for example:
+This software is available on MELPA. Make sure MELPA is configured, and install
+it with `M-x package-install RET lsp-scheme`. Alternatively, download this
+repository and add it to your load path, for example:
 
 `(add-to-list 'load-path "~/.emacs.d/lisp/lsp-scheme/")`
 
@@ -51,7 +51,7 @@ Alternatively you can add the specific command as hook, for example:
 ```
    (add-hook 'scheme-mode-hook #'lsp-scheme-guile)
 ```
-In this case lsp-scheme-implementation is ignored.
+In this case, `lsp-scheme-implementation` is ignored.
 
 
 This should in the first run automatically install the corresponding LSP server
@@ -60,13 +60,15 @@ server following the corresponding instructions.
 
 ## Usage
 
-This LSP client tries to implement an workflow similar to other Lisp-related
-Emacs modes. For instance, it relies on the interaction between the user and the
-REPL to load information needed. The interaction is currently based on Emacs
-built-in Scheme `inferior-mode`. So, for instance, in order to load the current
-buffer you can just issue `C-c C-l`. Since the REPL is connected to the LSP
-server, this will allow it to fetch symbols defined in the buffer, as well as
-libraries imported by it.
+Starting with version 0.1.0, this LSP client works on the background and does
+not rely on interaction with the user to keep LSP-related information on sync.
+It also does not provide a custom REPL (as in the first version) anymore, you
+can use Emacs' built-in Scheme support instead (`run-scheme`).
+
+The LSP server works best if your code is packed inside a library definition
+(either R6RS, R7RS or implementation specific). Depending on the implementation,
+you can improve the experience by adding your library to a path where your
+implementation can find it (see note regarding Guile below).
 
 
 ## Implementation specific notes
@@ -76,33 +78,21 @@ libraries imported by it.
 Since CHICKEN's run-time does not provide information regarding the location of
 defined symbols, we implemented an workaround that scans existing source code
 for symbols. This is done for any project opened in Emacs. By setting
-the environment variable CHICKEN_SRC to point to the source code of CHICKEN
-itself, the LSP server is able to provide location information of symbols
-defined in it.
+the environment variable CHICKEN_SOURCE_PATH to point to the source code of
+CHICKEN itself, the LSP server is able to provide location information of
+symbols defined in it.
 
-The current scanning algorithm is pretty simple and "imports" symbols from
-our modules found, regardless of it being actually used by your project
-or not. In the future we may consider a more sophisticated solution that
-actually keeps track of imported modules by parsing .EGG files and possibly any
-includes. Suggestions for improving this are obviously welcome.
+### Guile
 
-## Design notes
+As noted above, the LSP server can provide better language support if your
+code is defined in a library, and if it's able to locate your libraries in
+general. To achieve this, you can add paths to the `GUILE_LOAD_PATH` and
+`GUILE_LOAD_COMPILED_PATH` environment variables. Remember to add a "`...`" to
+the environment path to reuse the default paths, for example:
 
-Here some notes to explain some design decisions of this extension.
+`export GUILE_LOAD_PATH=/home/user/src/8sync:...:$GUILE_LOAD_PATH`
+See the section "Load Paths" in Guile's manual for more information.
 
-The emacs-lsp plugin usually works by spawning a new LSP server for each
-open project. On a previous stage of this extension, this meant that each file
-had its own Scheme interpreter running. The problem of this approach is that
-we want to rely on the implementation's run-time and the interaction of the user
-with it to provide information like symbol location. In other words, what the
-user loads in a REPL should affect what the LSP server delivers.
-
-In order to solve this, the LSP server was designed to provide a function
-that launches a "spawner server". It is basically a function that listens on
-a given TCP port (the starting number is customizable by
-`lsp-scheme--spawner-port`) for incoming connections, and spawns LSP servers for
-each connection. This way we have a single Scheme instance that provides the
-REPL functionality and manages multiple LSP servers on different threads.
 
 ## Contributing
 
