@@ -15,7 +15,7 @@ before proceeding with the installation of this extension:
 
 - make sure CHICKEN 5 is installed.
 - install needed eggs:
-  `chicken-install -s r7rs apropos chicken-doc srfi-18 srfi-130`
+  `chicken-install -s r7rs apropos chicken-doc srfi-18`
 - update documentation database:
 ```
 $ cd `csi -R chicken.platform -p '(chicken-home)'`
@@ -91,6 +91,7 @@ general. To achieve this, you can add paths to the `GUILE_LOAD_PATH` and
 the environment path to reuse the default paths, for example:
 
 `export GUILE_LOAD_PATH=/home/user/src/8sync:...:$GUILE_LOAD_PATH`
+
 See the section "Load Paths" in Guile's manual for more information.
 
 
