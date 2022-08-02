@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.2.0
+;; Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -83,11 +83,11 @@
 ;;;; Constants
 
 (defconst lsp-scheme--json-rpc-version
-  "0.2.4"
+  "0.2.5"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--lsp-server-version
-  "0.1.0"
+  "0.1.3"
   "Version of LSP Server implementation used.")
 
 ;;;; General Customization
@@ -274,7 +274,7 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
     ("GUILE_LOAD_PATH" .
      (list ,lsp-scheme--guile-install-dir ":"
            ,(f-join lsp-scheme--guile-install-dir
-                    "share/guile/3.0/")
+                    "share/guile/site/3.0/")
            ,(or (getenv "GUILE_LOAD_PATH") "")))))
 
 (defun lsp-scheme--guile-server-installed-p ()
@@ -339,6 +339,7 @@ The caller may provide EXTRA-PATHS to search for."
         (if (not res)
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
+            (message (format "installed version %s\n" installed-version))
             (or (string-equal installed-version
                               lsp-scheme--lsp-server-version)
                 (string-greaterp installed-version

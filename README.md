@@ -30,7 +30,7 @@ All you need is to install Guile 3.
 ## Installing
 
 This software is available on MELPA. Make sure MELPA is configured, and install
-it with `M-x package-install RET lsp-scheme`. Alternatively, download this
+it with <kbd>M-x</kbd> `package-install` <kbd>RET</kbd> `lsp-scheme`. Alternatively, download this
 repository and add it to your load path, for example:
 
 `(add-to-list 'load-path "~/.emacs.d/lisp/lsp-scheme/")`
@@ -93,7 +93,6 @@ the environment path to reuse the default paths, for example:
 `export GUILE_LOAD_PATH=/home/user/src/8sync:...:$GUILE_LOAD_PATH`
 
 See the section "Load Paths" in Guile's manual for more information.
-
 
 ## Contributing
 
