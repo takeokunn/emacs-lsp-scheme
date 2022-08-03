@@ -147,7 +147,8 @@ something is wrong."
         (lsp--info (format "Installing software and its dependencies..."))
         (call-process-shell-command
          (format
-          "CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install %s"
+          "CHICKEN_REPOSITORY_PATH=%s CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install %s"
+          (format "%s:%s" install-dir (lsp-scheme--chicken-get-repository-path))
           install-dir
           install-dir
           egg-name)
@@ -176,16 +177,20 @@ ignored"
                                          error-callback))
     (error (funcall error-callback err))))
 
+(defun lsp-scheme--chicken-get-repository-path ()
+  "Return CHICKEN's default repository path."
+  (shell-command-to-string
+   (concat "csi -e '(import (chicken platform)) "
+           "(for-each (lambda (p) (display p) (display \":\")) "
+           "   (repository-path))'")))
+
 (defun lsp-scheme--chicken-environment ()
   "Setup environment for calling CHICKEN's LSP server.
 Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
 consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   '(("CHICKEN_REPOSITORY_PATH" .
      (list lsp-scheme--chicken-install-dir
-           (shell-command-to-string
-            (concat "csi -e '(import (chicken platform)) "
-                    "(for-each (lambda (p) (display p) (display \":\")) "
-                    "   (repository-path))'"))))))
+           (lsp-scheme--chicken-get-repository-path)))))
 
 (defun lsp-scheme--chicken-server-installed-p ()
   "Check if LSP server for chicken is installed."
@@ -193,10 +198,7 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
    "chicken-lsp-server"
    (format "CHICKEN_REPOSITORY_PATH=%s:%s"
            lsp-scheme--chicken-install-dir
-           (shell-command-to-string
-            (concat "csi -e '(import (chicken platform)) "
-                    "(for-each (lambda (p) (display p) (display \":\")) "
-                    "   (repository-path))'")))
+           (lsp-scheme--chicken-get-repository-path))
    lsp-scheme--chicken-install-dir))
 
 (defun lsp-scheme--chicken-start ()
