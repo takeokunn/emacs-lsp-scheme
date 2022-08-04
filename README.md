@@ -41,7 +41,7 @@ repository and add it to your load path, for example:
 Add the following lines to your Emacs configuration file:
 
 ```
-(require lsp-scheme)
+(require 'lsp-scheme)
 (add-hook 'scheme-mode-hook #'lsp-scheme)
 
 (setq lsp-scheme-implementation "guile") ;;; also customizable
