@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.1.3
+;; Version: 0.1.4
 ;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -83,12 +83,16 @@
 ;;;; Constants
 
 (defconst lsp-scheme--json-rpc-version
-  "0.2.5"
+  "0.2.6"
   "Version of JSON-RPC implementation used.")
 
-(defconst lsp-scheme--lsp-server-version
+(defconst lsp-scheme--chicken-server-minimum-version
   "0.1.6"
-  "Version of LSP Server implementation used.")
+  "Minimum LSP Server server required for CHICKEN.")
+
+(defconst lsp-scheme--guile-server-minimum-version
+  "0.1.7"
+  "Minimum LSP Server server required for Guile.")
 
 ;;;; General Customization
 
@@ -118,8 +122,7 @@
   :package-version '(lsp-scheme . "0.0.1"))
 
 (defcustom lsp-scheme-server-url
-  (format "https://codeberg.org/rgherdt/scheme-lsp-server/archive/%s.zip"
-          lsp-scheme--lsp-server-version)
+  "https://codeberg.org/rgherdt/scheme-lsp-server/archive/master.zip"
   "Path to Scheme's LSP server."
   :type 'string
   :group 'lsp-scheme
@@ -196,6 +199,7 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   "Check if LSP server for chicken is installed."
   (lsp-scheme--accepted-installed-server-p
    "chicken-lsp-server"
+   lsp-scheme--chicken-server-minimum-version
    (format "CHICKEN_REPOSITORY_PATH=%s:%s"
            lsp-scheme--chicken-install-dir
            (lsp-scheme--chicken-get-repository-path))
@@ -281,6 +285,7 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   "Check if LSP server for Guile is installed."
   (lsp-scheme--accepted-installed-server-p
    "guile-lsp-server"
+   lsp-scheme--guile-server-minimum-version
    (format "GUILE_LOAD_COMPILED_PATH=%s:%s:%s GUILE_LOAD_PATH=%s:%s:%s"
            lsp-scheme--guile-install-dir
            (f-join lsp-scheme--guile-install-dir
@@ -289,7 +294,7 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
 
            lsp-scheme--guile-install-dir
            (f-join lsp-scheme--guile-install-dir
-                   "share/guile/3.0/")
+                   "share/guile/site/3.0/")
            (getenv "GUILE_LOAD_PATH"))
    lsp-scheme--guile-install-dir))
 
@@ -323,8 +328,8 @@ Used to extract version from output of <>-lsp-server --version."
                                  lines)))
     (replace-regexp-in-string "\\(Version \\)" "" version-line)))
 
-(defun lsp-scheme--accepted-installed-server-p (server-name env &rest extra-paths)
-  "Check if LSP server SERVER-NAME with correct version is installed.
+(defun lsp-scheme--accepted-installed-server-p (server-name server-version env &rest extra-paths)
+  "Check if LSP server SERVER-NAME with correct SERVER-VERSION is installed.
 ENV must be a string setting environment variables needed by the LSP server.
 The caller may provide EXTRA-PATHS to search for."
   (let ((bin-path (or (executable-find server-name)
@@ -340,24 +345,30 @@ The caller may provide EXTRA-PATHS to search for."
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
             (message (format "installed version %s\n" installed-version))
-            (or (string-equal installed-version
-                              lsp-scheme--lsp-server-version)
-                (string-greaterp installed-version
-                                 lsp-scheme--lsp-server-version))))))))
+            (or (string-equal installed-version server-version)
+                (string-greaterp installed-version server-version))))))))
 
 (defun lsp-scheme--make-install (decompressed-path callback error-callback)
   "Install automake based project at DECOMPRESSED-PATH.
 The caller shall provide a CALLBACK to execute after finishing installing
 the tarball, and an ERROR-CALLBACK to be called in case of an error."
-  (let ((cmd (format
-              "cd %s && ./configure --prefix=%s && make && make install && cd -"
-              decompressed-path
-              lsp-scheme--guile-install-dir)))
+  (let* ((env-string (format "GUILE_LOAD_PATH=.:...:%s:$GUILE_LOAD_PATH GUILE_COMPILED_LOAD_PATH=.:...:%s:$GUILE_COMPILE_LOAD_PATH"
+                             (f-join lsp-scheme--guile-install-dir
+                                     "share/guile/site/3.0/")
+                             (f-join lsp-scheme--guile-install-dir
+                                     "lib/guile/3.0/site-ccache/")))
+         (cmd (format
+               "cd %s && %s ./configure --prefix=%s && %s make && %s make install && cd -"
+               decompressed-path
+               env-string
+               lsp-scheme--guile-install-dir
+               env-string
+               env-string)))
     (message cmd)
     (lsp--info "Building software...")
     (let ((res (call-process-shell-command cmd
                                            nil
-                                           "*Shell command output*"
+                                           "*Shell Command output*"
                                            t)))
       (if (= res 0)
           (funcall callback)
