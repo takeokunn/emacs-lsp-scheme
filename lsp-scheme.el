@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.1.6
+;; Version: 0.1.7
 ;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -91,7 +91,7 @@
   "Minimum LSP Server server required for CHICKEN.")
 
 (defconst lsp-scheme--guile-server-minimum-version
-  "0.1.9"
+  "0.1.10"
   "Minimum LSP Server server required for Guile.")
 
 ;;;; General Customization
