@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.1.7
+;; Version: 0.1.8
 ;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -352,7 +352,7 @@ The caller may provide EXTRA-PATHS to search for."
   "Install automake based project at DECOMPRESSED-PATH.
 The caller shall provide a CALLBACK to execute after finishing installing
 the tarball, and an ERROR-CALLBACK to be called in case of an error."
-  (let* ((env-string (format "GUILE_LOAD_PATH=.:...:%s:$GUILE_LOAD_PATH GUILE_COMPILED_LOAD_PATH=.:...:%s:$GUILE_COMPILE_LOAD_PATH"
+  (let* ((env-string (format "GUILE_LOAD_PATH=.:...:%s:$GUILE_LOAD_PATH GUILE_LOAD_COMPILED_PATH=.:...:%s:$GUILE_COMPILE_LOAD_PATH"
                              (f-join lsp-scheme--guile-install-dir
                                      "share/guile/site/3.0/")
                              (f-join lsp-scheme--guile-install-dir
