@@ -3,13 +3,16 @@
 Emacs LSP client for the Scheme programming language.
 
 This plugin requires an Scheme LSP server in order to work. Currently it uses
-https://gitlab.com/rgherdt/scheme-lsp-server, which is also in an early stage of
-development. Currently only Guile and CHICKEN are supported.
+https://gitlab.com/rgherdt/scheme-lsp-server, which supports Guile and CHICKEN
+for now.
 
 ## Requirements
 
-Please follow the instructions specific to your chosen Scheme implementation
-before proceeding with the installation of this extension:
+You can either install an LSP server manually, or leave it to the extension
+to automatically download and install a corresponding server according
+to `lsp-scheme-implementation`. In this case, please follow the instructions
+specific to your chosen Scheme implementation before installing/activating
+this extension.
 
 ### CHICKEN 5
 
@@ -24,14 +27,16 @@ $ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
 
 ### Guile 3
 
-All you need is to install Guile 3.
+You need both Guile 3.x and its development libraries. For ex. in Debian 11,
+make sure guile-3.0 and guile-3.0-dev are installed.
 
 
 ## Installing
 
 This software is available on MELPA. Make sure MELPA is configured, and install
-it with <kbd>M-x</kbd> `package-install` <kbd>RET</kbd> `lsp-scheme`. Alternatively, download this
-repository and add it to your load path, for example:
+it with <kbd>M-x</kbd> `package-install` <kbd>RET</kbd> `lsp-scheme`.
+Alternatively, download this repository and add it to your load path, for
+example:
 
 `(add-to-list 'load-path "~/.emacs.d/lisp/lsp-scheme/")`
 

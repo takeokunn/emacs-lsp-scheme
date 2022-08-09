@@ -2,8 +2,8 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.1.8
-;; Package-Requires: ((emacs "25.1") (f "0.20.0") (lsp-mode "8.0.0"))
+;; Version: 0.1.9
+;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
 
@@ -328,8 +328,8 @@ Used to extract version from output of <>-lsp-server --version."
                                  lines)))
     (replace-regexp-in-string "\\(Version \\)" "" version-line)))
 
-(defun lsp-scheme--accepted-installed-server-p (server-name server-version env &rest extra-paths)
-  "Check if LSP server SERVER-NAME with correct SERVER-VERSION is installed.
+(defun lsp-scheme--accepted-installed-server-p (server-name target-version env &rest extra-paths)
+  "Check if LSP server SERVER-NAME with correct TARGET-VERSION are installed.
 ENV must be a string setting environment variables needed by the LSP server.
 The caller may provide EXTRA-PATHS to search for."
   (let ((bin-path (or (executable-find server-name)
@@ -345,8 +345,8 @@ The caller may provide EXTRA-PATHS to search for."
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
             (message (format "installed version %s\n" installed-version))
-            (or (string-equal installed-version server-version)
-                (string-greaterp installed-version server-version))))))))
+            (or (string-equal installed-version target-version)
+                (string-version-lessp target-version installed-version))))))))
 
 (defun lsp-scheme--make-install (decompressed-path callback error-callback)
   "Install automake based project at DECOMPRESSED-PATH.
