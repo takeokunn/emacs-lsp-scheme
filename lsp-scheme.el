@@ -32,7 +32,8 @@
 
 ;;Make sure your chosen Scheme implementation is installed and on your
 ;;load-path.  Implementation support depends on availability of a corresponding
-;;LSP server, as mentioned, for now only CHICKEN and Guile are supported.
+;;LSP server, as mentioned, for now only CHICKEN, Gambit and Guile are
+;;supported.
 
 ;;On first run you should be prompted to install an lsp server.  The
 ;;extension will install it to its cache directory.
@@ -225,6 +226,28 @@ The command requests from a running command server (started with
     (lsp-scheme--chicken-register-client))
   (lsp))
 
+;;;; Gambit
+(defun lsp-scheme--gambit-start ()
+  "Return list containing a command to run and its arguments based on PORT.
+The command requests from a running command server (started with
+ `lsp-scheme--run') an LSP server for the current scheme buffer."
+  (add-to-list 'load-path
+               "/home/rgherdt/.local/bin")
+
+  (list (or (locate-file "gambit-lsp-server" load-path)
+            (locate-file (f-join "bin" "gambit-lsp-server") load-path))
+        "--log-level"
+        lsp-scheme-log-level))
+
+;;;###autoload
+(defun lsp-scheme-gambit ()
+  "Regist Guile's LSP server if needed."
+  (lsp-scheme--initialize)
+  (unless (gethash 'lsp-gambit-server lsp-clients)
+    (lsp-scheme--gambit-register-client))
+  (lsp))
+
+
 ;;;; Guile
 (defvar lsp-scheme--guile-install-dir
   (f-join lsp-server-install-dir "lsp-guile-server/"))
@@ -387,6 +410,8 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
   "Setup and start Scheme's LSP server."
   (cond ((equal lsp-scheme-implementation "chicken")
          (lsp-scheme-chicken))
+        ((equal lsp-scheme-implementation "gambit")
+         (lsp-scheme-gambit))
         ((equal lsp-scheme-implementation "guile")
          (lsp-scheme-guile))
         (t (user-error "Implementation not supported: %s"
@@ -405,6 +430,16 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                     :priority 1
                     :server-id 'lsp-chicken-server
                     :download-server-fn #'lsp-scheme--chicken-ensure-server)))
+
+(defun lsp-scheme--gambit-register-client ()
+  "Register Gambit LSP client."
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection
+                                     #'lsp-scheme--gambit-start)
+                    :major-modes '(scheme-mode)
+                    :priority 1
+                    :server-id 'lsp-gambit-server)))
+
 
 (defun lsp-scheme--guile-register-client ()
   "Register Guile LSP client."
