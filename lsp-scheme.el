@@ -227,6 +227,30 @@ The command requests from a running command server (started with
   (lsp))
 
 ;;;; Gambit
+(defun lsp-scheme--gambit-ensure-server
+    (_client callback error-callback _update?)
+  "Ensure LSP Server for Gambit is installed and running.
+This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
+and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
+If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
+ignored"
+  (condition-case err
+      (progn
+        (call-process-shell-command
+         "gsi -install codeberg.org/rgherdt/scheme-lsp-server"
+         nil
+         "*Shell Command Output*"
+         t)
+        (lsp--info "Installation finished.")
+        (funcall callback))
+    (error (funcall error-callback err))))
+
+(defun lsp-scheme--gambit-server-installed-p ()
+  "Check if LSP server for Gambit is installed."
+  (let ((res (call-process-shell-command
+              "gsi -e '(import (codeberg.org/rgherdt/scheme-lsp-server gambit util)) (exit)'")))
+    (= res 0)))
+
 (defun lsp-scheme--gambit-start ()
   "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
@@ -435,10 +459,12 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
   "Register Gambit LSP client."
   (lsp-register-client
    (make-lsp-client :new-connection (lsp-stdio-connection
-                                     #'lsp-scheme--gambit-start)
+                                     #'lsp-scheme--gambit-start
+                                     #'lsp-scheme--gambit-server-installed-p)
                     :major-modes '(scheme-mode)
                     :priority 1
-                    :server-id 'lsp-gambit-server)))
+                    :server-id 'lsp-gambit-server
+                    :download-server-fn #'lsp-scheme--gambit-ensure-server)))
 
 
 (defun lsp-scheme--guile-register-client ()
