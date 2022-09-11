@@ -99,7 +99,7 @@
   "Minimum LSP Server server required for Guile.")
 
 (defconst lsp-scheme--shell-output-name
-  lsp-scheme--shell-output-name
+  "*Shell Command Output*"
   "Name used for calls to `call-process-shell-command`.")
 
 ;;;; General Customization
@@ -241,6 +241,35 @@ The command requests from a running command server (started with
     "codeberg.org/rgherdt/scheme-json-rpc/json-rpc"
     "codeberg.org/rgherdt/scheme-lsp-server/lsp-server"))
 
+(defun lsp-scheme--gambit-get-compiler-version ()
+  "Get GSC compiler version."
+  (shell-command-to-string "gsi -v"))
+
+(defun lsp-scheme--gambit-check-compiler ()
+  "Check if compiler is recent enough to be used to compile the library."
+  (let ((version (car (split-string (shell-command-to-string "gsi -v")))))
+    (not (string-version-lessp version "v4.9.4-89"))))
+
+(defun lsp-scheme--gambit-compile-library ()
+  "Compile installed LSP library for Gambit."
+  (cond ((lsp-scheme--gambit-check-compiler)
+         (lsp--info (format "Compiling library..."))
+         (let* ((userlib (shell-command-to-string
+                          "gsi -e '(display (path-expand \"~~userlib\"))'"))
+                (compile-script
+                 (locate-file
+                  "compile.sh"
+                  (list (f-join
+                         userlib
+                         "codeberg.org/rgherdt/scheme-lsp-server/@/gambit")))))
+           (call-process-shell-command compile-script
+                                       nil
+                                       lsp-scheme--shell-output-name
+                                       t)))
+        (t (lsp--info
+            (concat "Old compiler detected. Please build a newer version of "
+                    "GSC in order to compile the LSP library")))))
+
 (defun lsp-scheme--gambit-ensure-server
     (_client callback error-callback _update?)
   "Ensure LSP Server for Gambit is installed and running.
@@ -260,19 +289,7 @@ ignored"
                                       nil
                                       lsp-scheme--shell-output-name
                                       t))
-        (lsp--info (format "Compiling library..."))
-        (let* ((userlib (shell-command-to-string
-                         "gsi -e '(display (path-expand \"~~userlib\"))'"))
-               (compile-script
-                (locate-file
-                 "compile.sh"
-                 (list (f-join
-                        userlib
-                        "codeberg.org/rgherdt/scheme-lsp-server/@/gambit")))))
-          (call-process-shell-command compile-script
-                                      nil
-                                      lsp-scheme--shell-output-name
-                                      t))
+        (lsp-scheme--gambit-compile-library)
         (lsp--info (format "Compiling gambit-lsp-server..."))
         (let ((ex-src (locate-file (f-join "scripts" "gambit-lsp-server.scm")
                                    load-path)))
