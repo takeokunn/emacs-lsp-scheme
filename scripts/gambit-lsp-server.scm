@@ -104,34 +104,31 @@
           (else (print-usage)
                 (exit)))))
 
-(define (main args)
-  (define options (process-args args))
-  (define log-level (let ((log-level-option (assoc 'log-level options)))
+(define (main . args)
+  (let* ((options (process-args args))
+         (log-level (let ((log-level-option (assoc 'log-level options)))
                       (if log-level-option
                           (cdr log-level-option)
                           'error)))
-  (define repl-port-num
-    (let ((listen-option (assoc 'listen options)))
-      (if listen-option
-          (cdr listen-option)
-          #f)))
+         (repl-port-num
+          (let ((listen-option (assoc 'listen options)))
+            (if listen-option
+                (cdr listen-option)
+                #f)))
+         (tcp-port-num
+          (let ((tcp-option (assoc 'tcp options)))
+            (if tcp-option
+                (cdr tcp-option)
+                #f))))
 
-  (define tcp-port-num
-    (let ((tcp-option (assoc 'tcp options)))
-      (if tcp-option
-          (cdr tcp-option)
-          #f)))
 
-  (when repl-port-num
-    (thread-start!
-     (make-thread
-      (lambda () (spawn-repl-server repl-port-num)))))
+    (when repl-port-num
+      (thread-start!
+       (make-thread
+        (lambda () (spawn-repl-server repl-port-num)))))
 
-  (parameterize ((lsp-server-log-level log-level))
-    (if tcp-port-num
-        (lsp-server-start/tcp tcp-port-num)
-        (lsp-server-start/stdio))))
+    (parameterize ((lsp-server-log-level log-level))
+      (if tcp-port-num
+          (lsp-server-start/tcp tcp-port-num)
+          (lsp-server-start/stdio)))))
 
-(cond-expand
- ((or chicken gambit) (main (cdr (command-line))))
- (else))
