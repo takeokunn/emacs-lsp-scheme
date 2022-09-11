@@ -278,26 +278,19 @@ and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
 ignored"
   (condition-case err
-      (progn
-        (dolist (libname lsp-scheme--gambit-dependencies)
-          (lsp--info (format "Installing library %s..." libname))
-          (call-process-shell-command (format "gsi -uninstall %s" libname)
-                                      nil
-                                      lsp-scheme--shell-output-name
-                                      t)
-          (call-process-shell-command (format "gsi -install %s" libname)
-                                      nil
-                                      lsp-scheme--shell-output-name
-                                      t))
-        (lsp-scheme--gambit-compile-library)
-        (lsp--info (format "Compiling gambit-lsp-server..."))
-        (let ((ex-src (locate-file (f-join "scripts" "gambit-lsp-server.scm")
-                                   load-path)))
-          (call-process-shell-command (format "gsc -exe -nopreload %s" ex-src)
-                                      nil
-                                      lsp-scheme--shell-output-name
-                                      t))
-        (lsp--info "Installation finished.")
+      (let* ((install-script
+              (locate-file (f-join "scripts" "install-gambit-lsp-server.sh")
+                           load-path))
+             (compile-p (lsp-scheme--gambit-check-compiler))
+             (install-cmd
+              (if compile-p
+                  (format "%s compile" install-script)
+                install-script)))
+        (lsp--info (format "Installing LSP server for Gambit"))
+        (call-process-shell-command install-cmd
+                                    nil
+                                    lsp-scheme--shell-output-name
+                                    t)
         (funcall callback))
     (error (funcall error-callback err))))
 
@@ -454,7 +447,6 @@ The caller may provide EXTRA-PATHS to search for."
         (if (not res)
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
-            (message (format "installed version %s\n" installed-version))
             (or (string-equal installed-version target-version)
                 (string-version-lessp target-version installed-version))))))))
 
