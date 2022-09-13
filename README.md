@@ -3,8 +3,8 @@
 Emacs LSP client for the Scheme programming language.
 
 This plugin requires an Scheme LSP server in order to work. Currently it uses
-https://gitlab.com/rgherdt/scheme-lsp-server, which supports Guile and CHICKEN
-for now.
+https://gitlab.com/rgherdt/scheme-lsp-server, which supports Gambit, Guile and
+CHICKEN for now.
 
 ## Requirements
 
@@ -24,6 +24,13 @@ this extension.
 $ cd `csi -R chicken.platform -p '(chicken-home)'`
 $ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
 ```
+
+### Gambit
+
+You need Gambit 4.9.4+ to install and use this library. For better results,
+install the latest gambit version provided in the `master` branch, since it
+contains fixes that allow compiling the library for better performance.
+Please make sure to also compile its modules using `make modules`.
 
 ### Guile 3
 

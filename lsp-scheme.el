@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.1.9
+;; Version: 0.2.0
 ;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -25,14 +25,14 @@
 ;;; Commentary:
 
 ;; Client for the Scheme LSP server.
-;; Currently this client only supports CHICKEN 5 and Guile 3, since
-;; those are supported by scheme-lsp-server.
+;; Currently this client only supports CHICKEN 5, Gambit 4.9.4+ and Guile 3.
 
 ;;;; Installation
 
 ;;Make sure your chosen Scheme implementation is installed and on your
 ;;load-path.  Implementation support depends on availability of a corresponding
-;;LSP server, as mentioned, for now only CHICKEN and Guile are supported.
+;;LSP server, as mentioned, for now only CHICKEN, Gambit and Guile are
+;;supported.
 
 ;;On first run you should be prompted to install an lsp server.  The
 ;;extension will install it to its cache directory.
@@ -90,9 +90,17 @@
   "0.1.8"
   "Minimum LSP Server server required for CHICKEN.")
 
+(defconst lsp-scheme--gambit-server-minimum-version
+  "0.2.0"
+  "Minimum LSP Server server required for Gambit.")
+
 (defconst lsp-scheme--guile-server-minimum-version
   "0.1.10"
   "Minimum LSP Server server required for Guile.")
+
+(defconst lsp-scheme--shell-output-name
+  "*Shell Command Output*"
+  "Name used for calls to `call-process-shell-command`.")
 
 ;;;; General Customization
 
@@ -156,7 +164,7 @@ something is wrong."
           install-dir
           egg-name)
          nil
-         "*Shell Command Output*"
+         lsp-scheme--shell-output-name
          t)
         (lsp--info "Installation finished.")
         (funcall callback))
@@ -224,6 +232,99 @@ The command requests from a running command server (started with
   (unless (gethash 'lsp-chicken-server lsp-clients)
     (lsp-scheme--chicken-register-client))
   (lsp))
+
+;;;; Gambit
+(defconst lsp-scheme--gambit-dependencies
+  '("codeberg.org/rgherdt/srfi"
+    "github.com/ashinn/irregex"
+    "github.com/rgherdt/chibi-scheme"
+    "codeberg.org/rgherdt/scheme-json-rpc/json-rpc"
+    "codeberg.org/rgherdt/scheme-lsp-server/lsp-server"))
+
+(defun lsp-scheme--gambit-get-compiler-version ()
+  "Get GSC compiler version."
+  (shell-command-to-string "gsi -v"))
+
+(defun lsp-scheme--gambit-check-compiler ()
+  "Check if compiler is recent enough to be used to compile the library."
+  (let ((version (car (split-string (shell-command-to-string "gsi -v")))))
+    (not (string-version-lessp version "v4.9.4-89"))))
+
+(defun lsp-scheme--gambit-compile-library ()
+  "Compile installed LSP library for Gambit."
+  (cond ((lsp-scheme--gambit-check-compiler)
+         (lsp--info (format "Compiling library..."))
+         (let* ((userlib (shell-command-to-string
+                          "gsi -e '(display (path-expand \"~~userlib\"))'"))
+                (compile-script
+                 (locate-file
+                  "compile.sh"
+                  (list (f-join
+                         userlib
+                         "codeberg.org/rgherdt/scheme-lsp-server/@/gambit")))))
+           (call-process-shell-command compile-script
+                                       nil
+                                       lsp-scheme--shell-output-name
+                                       t)))
+        (t (lsp--info
+            (concat "Old compiler detected. Please build a newer version of "
+                    "GSC in order to compile the LSP library")))))
+
+(defun lsp-scheme--gambit-ensure-server
+    (_client callback error-callback _update?)
+  "Ensure LSP Server for Gambit is installed and running.
+This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
+and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
+If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
+ignored"
+  (condition-case err
+      (let* ((install-script
+              (locate-file (f-join "scripts" "install-gambit-lsp-server.sh")
+                           load-path))
+             (compile-p (lsp-scheme--gambit-check-compiler))
+             (install-cmd
+              (if compile-p
+                  (format "%s compile" install-script)
+                install-script)))
+        (lsp--info (format "Installing LSP server for Gambit"))
+        (call-process-shell-command install-cmd
+                                    nil
+                                    lsp-scheme--shell-output-name
+                                    t)
+        (funcall callback))
+    (error (funcall error-callback err))))
+
+(defun lsp-scheme--gambit-server-installed-p ()
+  "Check if LSP server for Gambit is installed."
+  (let ((res (call-process-shell-command
+              "gsi -e '(import (codeberg.org/rgherdt/scheme-lsp-server gambit util)) (exit)'")))
+    (and (= res 0)
+         (lsp-scheme--accepted-installed-server-p
+          "gambit-lsp-server"
+          lsp-scheme--gambit-server-minimum-version
+          ""))))
+
+(defun lsp-scheme--gambit-start ()
+  "Return list containing a command to run and its arguments based on PORT.
+The command requests from a running command server (started with
+ `lsp-scheme--run') an LSP server for the current scheme buffer."
+  (add-to-list 'load-path
+               "/home/rgherdt/.local/bin")
+
+  (list (or (locate-file "gambit-lsp-server" load-path)
+            (locate-file (f-join "scripts" "gambit-lsp-server") load-path)
+            (locate-file (f-join "bin" "gambit-lsp-server") load-path))
+        "--log-level"
+        lsp-scheme-log-level))
+
+;;;###autoload
+(defun lsp-scheme-gambit ()
+  "Regist Guile's LSP server if needed."
+  (lsp-scheme--initialize)
+  (unless (gethash 'lsp-gambit-server lsp-clients)
+    (lsp-scheme--gambit-register-client))
+  (lsp))
+
 
 ;;;; Guile
 (defvar lsp-scheme--guile-install-dir
@@ -335,8 +436,10 @@ The caller may provide EXTRA-PATHS to search for."
   (let ((bin-path (or (executable-find server-name)
                       (locate-file server-name load-path)
                       (locate-file (f-join "bin" server-name) load-path)
+                      (locate-file (f-join "scripts" server-name) load-path)
                       (locate-file server-name extra-paths)
-                      (locate-file (f-join "bin" server-name) extra-paths))))
+                      (locate-file (f-join "bin" server-name) extra-paths)
+                      (locate-file (f-join "scripts" server-name) extra-paths))))
     (if (not bin-path)
         nil
       (let ((res (shell-command-to-string
@@ -344,7 +447,6 @@ The caller may provide EXTRA-PATHS to search for."
         (if (not res)
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
-            (message (format "installed version %s\n" installed-version))
             (or (string-equal installed-version target-version)
                 (string-version-lessp target-version installed-version))))))))
 
@@ -387,6 +489,8 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
   "Setup and start Scheme's LSP server."
   (cond ((equal lsp-scheme-implementation "chicken")
          (lsp-scheme-chicken))
+        ((equal lsp-scheme-implementation "gambit")
+         (lsp-scheme-gambit))
         ((equal lsp-scheme-implementation "guile")
          (lsp-scheme-guile))
         (t (user-error "Implementation not supported: %s"
@@ -405,6 +509,18 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                     :priority 1
                     :server-id 'lsp-chicken-server
                     :download-server-fn #'lsp-scheme--chicken-ensure-server)))
+
+(defun lsp-scheme--gambit-register-client ()
+  "Register Gambit LSP client."
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection
+                                     #'lsp-scheme--gambit-start
+                                     #'lsp-scheme--gambit-server-installed-p)
+                    :major-modes '(scheme-mode)
+                    :priority 1
+                    :server-id 'lsp-gambit-server
+                    :download-server-fn #'lsp-scheme--gambit-ensure-server)))
+
 
 (defun lsp-scheme--guile-register-client ()
   "Register Guile LSP client."
