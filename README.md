@@ -8,21 +8,28 @@ CHICKEN for now.
 
 ## Requirements
 
-You can either install an LSP server manually, or leave it to the extension
-to automatically download and install a corresponding server according
-to `lsp-scheme-implementation`. In this case, please follow the instructions
-specific to your chosen Scheme implementation before installing/activating
-this extension.
+You can either install an LSP server manually, or in case you are using Gambit
+or Guile leave it to the extension to automatically download and install a
+corresponding server according to `lsp-scheme-implementation`. Please follow 
+the instructions specific to your chosen Scheme implementation before
+installing/activating this extension.
 
 ### CHICKEN 5
 
-- make sure CHICKEN 5 is installed.
+Starting with version 0.2.1 we don't auto-install the LSP server for CHICKEN
+anymore (since installing it locally to the extension was suboptimal in some
+cases). Installing it manually is trivial though:
+
 - install needed eggs:
   `chicken-install -s r7rs apropos chicken-doc srfi-18`
 - update documentation database:
 ```
 $ cd `csi -R chicken.platform -p '(chicken-home)'`
 $ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
+```
+- install the lsp server:
+```
+$ chicken-install -s lsp-server
 ```
 
 ### Gambit

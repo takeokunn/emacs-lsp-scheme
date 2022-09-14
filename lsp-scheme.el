@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.2.0
+;; Version: 0.2.1
 ;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -34,19 +34,10 @@
 ;;LSP server, as mentioned, for now only CHICKEN, Gambit and Guile are
 ;;supported.
 
-;;On first run you should be prompted to install an lsp server.  The
-;;extension will install it to its cache directory.
-;;In case something goes wrong, manually install the server available at
-;;https://codeberg.org/rgherdt/scheme-lsp-server (and make sure to create
-;;an issue at our repository).
-
-;;In order to achieve better results, follow these instructions to update
-;;CHICKEN's documentation:
-
-;;- install needed eggs: chicken-install -s r7rs apropos chicken-doc srfi-18 srfi-130
-;;- update documentation database:
-;;   $ cd `csi -R chicken.platform -p '(chicken-home)'`
-;;   $ curl https://3e8.org/pub/chicken-doc/chicken-doc-repo-5.tgz | sudo tar zx
+;;For Gambit and Guile, the extension will prompt you for auto-installing the
+;;LSP server.  In case something goes wrong (or you are using CHICKEN),
+;;manually install the correposnding server following the instructions at
+;;https://codeberg.org/rgherdt/scheme-lsp-server.
 
 
 ;;;; Setup
@@ -144,82 +135,17 @@
   :package-version '(lsp-scheme . "0.2.0"))
 
 ;;;; CHICKEN
-(defvar lsp-scheme--chicken-install-dir
-  (f-join lsp-server-install-dir "lsp-chicken-server/"))
-
-(defun lsp-scheme--chicken-install-egg (egg-name install-dir callback error-callback)
-  "Ensure EGG-NAME is installed at provided INSTALL-DIR.
-This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
-and thus calls its CALLBACK after completing, or ERROR-CALLBACK in case
-something is wrong."
-  (condition-case err
-      (progn
-        (f-delete install-dir t)
-        (lsp--info (format "Installing software and its dependencies..."))
-        (call-process-shell-command
-         (format
-          "CHICKEN_REPOSITORY_PATH=%s CHICKEN_INSTALL_REPOSITORY=%s CHICKEN_INSTALL_PREFIX=%s chicken-install %s"
-          (format "%s:%s" install-dir (lsp-scheme--chicken-get-repository-path))
-          install-dir
-          install-dir
-          egg-name)
-         nil
-         lsp-scheme--shell-output-name
-         t)
-        (lsp--info "Installation finished.")
-        (funcall callback))
-    (error (funcall error-callback err))))
-
-(defun lsp-scheme--chicken-ensure-server
-    (_client callback error-callback _update?)
-  "Ensure LSP Server for Chicken is installed and running.
-This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
-and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
-If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
-ignored"
-  (condition-case err
-      (progn
-        (when (f-exists? lsp-scheme--chicken-install-dir)
-          (f-delete lsp-scheme--chicken-install-dir t))
-        (lsp-scheme--chicken-install-egg "lsp-server"
-                                         lsp-scheme--chicken-install-dir
-                                         (lambda ()
-                                           (funcall callback))
-                                         error-callback))
-    (error (funcall error-callback err))))
-
-(defun lsp-scheme--chicken-get-repository-path ()
-  "Return CHICKEN's default repository path."
-  (shell-command-to-string
-   (concat "csi -e '(import (chicken platform)) "
-           "(for-each (lambda (p) (display p) (display \":\")) "
-           "   (repository-path))'")))
-
-(defun lsp-scheme--chicken-environment ()
-  "Setup environment for calling CHICKEN's LSP server.
-Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
-consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
-  '(("CHICKEN_REPOSITORY_PATH" .
-     (list lsp-scheme--chicken-install-dir
-           (lsp-scheme--chicken-get-repository-path)))))
-
 (defun lsp-scheme--chicken-server-installed-p ()
   "Check if LSP server for chicken is installed."
   (lsp-scheme--accepted-installed-server-p
    "chicken-lsp-server"
    lsp-scheme--chicken-server-minimum-version
-   (format "CHICKEN_REPOSITORY_PATH=%s:%s"
-           lsp-scheme--chicken-install-dir
-           (lsp-scheme--chicken-get-repository-path))
-   lsp-scheme--chicken-install-dir))
+   ""))
 
 (defun lsp-scheme--chicken-start ()
   "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
  `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (add-to-list 'load-path
-               lsp-scheme--chicken-install-dir)
-
   (list (or (locate-file "chicken-lsp-server" load-path)
             (locate-file (f-join "bin" "chicken-lsp-server") load-path))
         "--log-level"
@@ -234,17 +160,6 @@ The command requests from a running command server (started with
   (lsp))
 
 ;;;; Gambit
-(defconst lsp-scheme--gambit-dependencies
-  '("codeberg.org/rgherdt/srfi"
-    "github.com/ashinn/irregex"
-    "github.com/rgherdt/chibi-scheme"
-    "codeberg.org/rgherdt/scheme-json-rpc/json-rpc"
-    "codeberg.org/rgherdt/scheme-lsp-server/lsp-server"))
-
-(defun lsp-scheme--gambit-get-compiler-version ()
-  "Get GSC compiler version."
-  (shell-command-to-string "gsi -v"))
-
 (defun lsp-scheme--gambit-check-compiler ()
   "Check if compiler is recent enough to be used to compile the library."
   (let ((version (car (split-string (shell-command-to-string "gsi -v")))))
@@ -270,6 +185,14 @@ The command requests from a running command server (started with
             (concat "Old compiler detected. Please build a newer version of "
                     "GSC in order to compile the LSP library")))))
 
+(defun lsp-scheme--gambit-generate-executable ()
+  "Compile gambit-lsp-server."
+  (let ((source (locate-file (f-join "scripts" "gambit-lsp-server.scm") load-path)))
+    (call-process-shell-command (format "gsc -exe -nopreload %s" source)
+                                nil
+                                lsp-scheme--shell-output-name
+                                t)))
+
 (defun lsp-scheme--gambit-ensure-server
     (_client callback error-callback _update?)
   "Ensure LSP Server for Gambit is installed and running.
@@ -285,24 +208,48 @@ ignored"
              (install-cmd
               (if compile-p
                   (format "%s compile" install-script)
-                install-script)))
-        (lsp--info (format "Installing LSP server for Gambit"))
-        (call-process-shell-command install-cmd
-                                    nil
-                                    lsp-scheme--shell-output-name
-                                    t)
+                install-script))
+             (lib-installed-p
+              (lsp-scheme--gambit-library-installed-p))
+             (executable-found-p
+              (lsp-scheme--gambit-executable-installed-p)))
+        (cond ((not lib-installed-p)
+               (lsp--info (format "Installing LSP server for Gambit"))
+               (call-process-shell-command install-cmd
+                                           nil
+                                           lsp-scheme--shell-output-name
+                                           t))
+              ((not executable-found-p)
+               (lsp--info (format "LSP Library found, but executable missing. Compiling it."))
+               (lsp-scheme--gambit-generate-executable))
+              (t
+               (lsp--info (format "LSP server already installed."))))
         (funcall callback))
     (error (funcall error-callback err))))
 
-(defun lsp-scheme--gambit-server-installed-p ()
-  "Check if LSP server for Gambit is installed."
+(defun lsp-scheme--gambit-library-installed-p ()
+  "Check if lsp-server library is installed."
   (let ((res (call-process-shell-command
               "gsi -e '(import (codeberg.org/rgherdt/scheme-lsp-server gambit util)) (exit)'")))
-    (and (= res 0)
-         (lsp-scheme--accepted-installed-server-p
-          "gambit-lsp-server"
-          lsp-scheme--gambit-server-minimum-version
-          ""))))
+    (= res 0)))
+
+(defun lsp-scheme--gambit-executable-installed-p ()
+  "Check if compiled guile-lsp-server is available."
+  (locate-file (f-join "scripts" "gambit-lsp-server") load-path))
+
+(defun lsp-scheme--gambit-server-installed-p ()
+  "Check if LSP server for Gambit is installed."
+  (and (lsp-scheme--gambit-library-installed-p)
+       (lsp-scheme--accepted-installed-server-p
+        "gambit-lsp-server"
+        lsp-scheme--gambit-server-minimum-version
+        "")))
+
+(defun lsp-scheme--gambit-find-lsp-server ()
+  "Return path to gambit-lsp-server if found."
+  (or (locate-file "gambit-lsp-server" load-path)
+      (locate-file (f-join "scripts" "gambit-lsp-server") load-path)
+      (locate-file (f-join "bin" "gambit-lsp-server") load-path)))
 
 (defun lsp-scheme--gambit-start ()
   "Return list containing a command to run and its arguments based on PORT.
@@ -311,9 +258,7 @@ The command requests from a running command server (started with
   (add-to-list 'load-path
                "/home/rgherdt/.local/bin")
 
-  (list (or (locate-file "gambit-lsp-server" load-path)
-            (locate-file (f-join "scripts" "gambit-lsp-server") load-path)
-            (locate-file (f-join "bin" "gambit-lsp-server") load-path))
+  (list (lsp-scheme--gambit-find-lsp-server)
         "--log-level"
         lsp-scheme-log-level))
 
@@ -480,8 +425,6 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
 (defun lsp-scheme--initialize ()
   "Initialize extension (setup 'load-path' and environment)."
   (add-to-list 'load-path
-               lsp-scheme--chicken-install-dir)
-  (add-to-list 'load-path
                lsp-scheme--guile-install-dir))
 
 ;;;###autoload
@@ -505,10 +448,8 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                                      #'lsp-scheme--chicken-start
                                      #'lsp-scheme--chicken-server-installed-p)
                     :major-modes '(scheme-mode)
-                    :environment-fn #'lsp-scheme--chicken-environment
                     :priority 1
-                    :server-id 'lsp-chicken-server
-                    :download-server-fn #'lsp-scheme--chicken-ensure-server)))
+                    :server-id 'lsp-chicken-server)))
 
 (defun lsp-scheme--gambit-register-client ()
   "Register Gambit LSP client."
