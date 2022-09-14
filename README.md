@@ -82,7 +82,8 @@ server following the corresponding instructions.
 Starting with version 0.1.0, this LSP client works on the background and does
 not rely on interaction with the user to keep LSP-related information on sync.
 It also does not provide a custom REPL (as in the first version) anymore, you
-can use Emacs' built-in Scheme support instead (`run-scheme`).
+can use Emacs' built-in Scheme support instead (`run-scheme`). You may customize
+`scheme-program-name` to run the interpreter of your Scheme of choice.
 
 The LSP server works best if your code is packed inside a library definition
 (either R6RS, R7RS or implementation specific). Depending on the implementation,
