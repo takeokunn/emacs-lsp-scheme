@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.2.1
+;; Version: 0.2.2
 ;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -87,7 +87,7 @@
 ;;;; Constants
 
 (defconst lsp-scheme--json-rpc-version
-  "0.2.6"
+  "0.2.11"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--chicken-server-minimum-version
